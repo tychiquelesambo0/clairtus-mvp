@@ -1,73 +1,73 @@
 {
   "nav": {
-    "programs": "Le Protocole",
-    "benefits": "L'Infrastructure",
+    "programs": "Comment ça marche",
+    "benefits": "Pourquoi Clairtus ?",
     "faq": "FAQ",
     "login": "Support",
     "apply": "Ouvrir l'accès"
   },
   "hero": {
-    "badge": "Le Standard Or des Transactions en RDC 🇨🇩",
-    "title": "Ne Vendez Plus Jamais à Découvert. Ne Payez Plus Jamais dans le Vide.",
-    "subtitle": "L'ultime bouclier de vos transactions. Vendeurs : encaissez à la seconde où vous livrez. Acheteurs : votre argent est scellé jusqu'à la réception. Zéro application. 100% via WhatsApp. L'ère des arnaques est officiellement révolue.",
-    "primaryCta": "Sécuriser une transaction",
+    "badge": "Le 1er Tiers de Confiance Numérique en RDC 🇨🇩",
+    "title": "Ne Livrez Plus Jamais Sans Garantie. N'Avancez Plus Jamais d'Argent dans le Vide.",
+    "subtitle": "Vendeurs : expédiez vos articles en sachant que l'argent est déjà sécurisé. Acheteurs : votre paiement est bloqué sous votre contrôle jusqu'à la réception de la commande. 100% via WhatsApp. Zéro application à installer.",
+    "primaryCta": "Sécuriser une vente",
     "secondaryCta": "Découvrir le protocole"
   },
   "stats": {
     "rate": "Zéro",
     "rateLabel": "Risque de Fraude",
-    "salary": "< 3s",
-    "salaryLabel": "Libération des Fonds",
+    "salary": "Instantané",
+    "salaryLabel": "Paiement à la livraison",
     "network": "100%",
     "networkLabel": "Natif sur WhatsApp"
   },
   "features": {
-    "title": "La technologie financière qui protège vos intérêts.",
-    "subtitle": "Une architecture de séquestre (escrow) de niveau institutionnel, conçue pour frapper fort et juste.",
+    "title": "La technologie qui met fin aux arnaques et aux livraisons impayées.",
+    "subtitle": "Une architecture de séquestre conçue pour protéger les vendeurs et rassurer les acheteurs.",
     "items": [
       {
-        "title": "Séquestre Inviolable",
-        "description": "L'argent de l'acheteur est cryptographiquement verrouillé dans un coffre-fort PawaPay. Le vendeur sait que l'argent est là avant même de bouger le petit doigt."
+        "title": "Garantie de Solvabilité",
+        "description": "L'argent de l'acheteur est verrouillé numériquement avant même le départ du livreur. Le vendeur sait avec certitude que les fonds sont disponibles."
       },
       {
-        "title": "Virements Supersoniques",
-        "description": "Oubliez l'attente. À l'instant exact où le code PIN à 4 chiffres est validé, les fonds explosent vers le compte Mobile Money du vendeur."
+        "title": "Le Pouvoir du Code PIN",
+        "description": "L'acheteur est le seul maître de son argent. Les fonds ne sont débloqués que lorsqu'il vérifie la marchandise et remet son code PIN secret à 4 chiffres."
       },
       {
-        "title": "L'Expérience WhatsApp Native",
-        "description": "Aucune friction. Aucun mot de passe oublié. Pilotez vos contrats de vente et débloquez vos paiements directement depuis votre messagerie."
+        "title": "Aucune Application Requise",
+        "description": "Ne forcez pas vos clients à télécharger une énième application. Clairtus s'intègre directement dans WhatsApp, là où vous concluez déjà vos ventes."
       },
       {
-        "title": "Résolution Implacable",
-        "description": "Colis non conforme ? Le paiement reste gelé. Notre protocole de litige protège l'acheteur tout en détruisant les tentatives de chantage au vendeur."
+        "title": "Protection Anti-Chantage",
+        "description": "Client fantôme ? Article non conforme ? Les fonds restent gelés et protégés. Notre équipe de médiation intervient pour garantir une résolution équitable."
       }
     ]
   },
   "programs": {
-    "title": "La Trinité de la Confiance.",
-    "subtitle": "Trois étapes. Zéro faille. Sécurisez n'importe quelle vente en moins de 60 secondes.",
+    "title": "Comment ça marche ?",
+    "subtitle": "Trois étapes. Zéro faille. Sécurisez n'importe quelle vente en moins d'une minute.",
     "items": [
       {
-        "title": "1. Verrouillez l'Accord",
-        "description": "Le vendeur fixe le prix via le bot. L'acheteur dépose les fonds en un clic via M-Pesa, Airtel ou Orange Money. L'argent est instantanément mis sous cloche."
+        "title": "1. Le Contrat",
+        "description": "Le vendeur fixe le prix via le bot. L'acheteur clique sur un lien sécurisé pour bloquer les fonds via son compte Mobile Money. L'argent est mis sous cloche."
       },
       {
-        "title": "2. Livrez Sans Trembler",
-        "description": "Clairtus émet un PIN secret à l'acheteur et donne le feu vert au vendeur. La marchandise peut voyager : le paiement est déjà mathématiquement garanti."
+        "title": "2. L'Expédition",
+        "description": "Clairtus émet un PIN secret à l'acheteur et donne le feu vert au vendeur. La marchandise peut être expédiée : le paiement est déjà mathématiquement garanti."
       },
       {
-        "title": "3. Déclenchez le Paiement",
-        "description": "L'article est livré ? L'acheteur révèle son PIN. Le vendeur le tape sur WhatsApp et voit son solde Mobile Money crédité en temps réel."
+        "title": "3. La Remise",
+        "description": "Le colis est livré ? L'acheteur inspecte l'article et révèle son PIN. Le vendeur le tape sur WhatsApp et reçoit son argent instantanément sur son téléphone."
       }
     ]
   },
   "cta": {
-    "title": "Arrêtez de Parier. Commencez à Commercer.",
-    "subtitle": "Rejoignez l'élite des marchands de Kinshasa qui exigent la sécurité absolue pour chaque dollar transigé.",
-    "button": "Lancer mon premier contrat"
+    "title": "Arrêtez de parier sur la bonne foi.",
+    "subtitle": "Rejoignez l'élite des e-commerçants congolais qui ont éliminé les pertes liées aux fausses commandes et aux frais de livraison inutiles.",
+    "button": "Créer mon premier lien sécurisé"
   },
   "footer": {
-    "description": "Clairtus — Le moteur de confiance de l'économie Congolaise.",
+    "description": "Clairtus — Le moteur de confiance du e-commerce en RDC.",
     "rights": "© 2026 Clairtus. Tous droits réservés."
   }
 }

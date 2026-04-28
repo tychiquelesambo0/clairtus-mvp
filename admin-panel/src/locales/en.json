@@ -9,7 +9,7 @@
   "hero": {
     "badge": "Regulated Payments Infrastructure 🇨🇩",
     "title": "The Escrow Backbone for Commerce in Congo.",
-    "subtitle": "Stop taking undue risk. Clairtus secures funds through regulated PawaPay wallets and unlocks payouts instantly via PIN—all on WhatsApp, zero friction.",
+    "subtitle": "Stop taking undue risk. Clairtus secures funds through regulated escrow wallets and unlocks payouts instantly via PIN—all on WhatsApp, zero friction.",
     "primaryCta": "Secure a transaction",
     "secondaryCta": "How it works"
   },
@@ -27,7 +27,7 @@
     "items": [
       {
         "title": "Bulletproof antifraud assurance",
-        "description": "Buyer funds stay cryptographically held in licensed PawaPay collection wallets until physical delivery is verified."
+        "description": "Buyer funds stay cryptographically held in licensed collection wallets until physical delivery is verified."
       },
       {
         "title": "Instant liquidity",
@@ -35,7 +35,7 @@
       },
       {
         "title": "Zero friction — WhatsApp native",
-        "description": "No app installs. Clairtus is wired into the Meta WhatsApp Cloud Platform for instantaneous adoption across your network."
+        "description": "No app installs. Clairtus is fully native to WhatsApp for instantaneous adoption across your network."
       },
       {
         "title": "Human-led dispute resolution",

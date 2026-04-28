@@ -189,15 +189,20 @@ export default function Home() {
             </motion.div>
           </div>
 
-          {/* Tech stack */}
-          <div className="relative mx-auto flex max-w-4xl flex-col items-center justify-center px-4 pb-20 pt-10 opacity-60">
-            <p className="mb-6 text-sm font-semibold uppercase tracking-widest text-gray-400">
-              Propulsé par une infrastructure régulée
+          <div className="flex flex-col items-center justify-center pt-10 pb-20 opacity-70">
+            <p className="text-sm text-gray-400 font-semibold tracking-widest uppercase mb-6 text-center">
+              Fonds sécurisés via les opérateurs agréés en RDC
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4 text-xl font-bold text-gray-500">
-              <span>PawaPay</span>
-              <span>Meta WhatsApp API</span>
-              <span>Supabase</span>
+            <div className="flex flex-wrap justify-center gap-8 md:gap-12 items-center font-bold text-lg md:text-xl text-gray-300">
+              <span className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-500"></div> Airtel Money
+              </span>
+              <span className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-orange-500"></div> Orange Money
+              </span>
+              <span className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-blue-500"></div> M-Pesa
+              </span>
             </div>
           </div>
         </section>
