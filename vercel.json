@@ -2,5 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "installCommand": "npm install --include=optional",
-  "buildCommand": "npm run build -w admin-panel"
+  "buildCommand": "npm run build -w admin-panel",
+  "outputDirectory": "admin-panel/.next"
 }
