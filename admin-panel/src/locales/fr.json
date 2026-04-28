@@ -1,73 +1,73 @@
 {
   "nav": {
-    "programs": "L'Infrastructure",
-    "benefits": "Avantages",
+    "programs": "Le Protocole",
+    "benefits": "L'Infrastructure",
     "faq": "FAQ",
     "login": "Support",
-    "apply": "Démarrer"
+    "apply": "Ouvrir l'accès"
   },
   "hero": {
-    "badge": "Infrastructure de Paiement Sécurisée 🇨🇩",
-    "title": "Le Tiers de Confiance du Commerce Congolais.",
-    "subtitle": "Ne prenez plus aucun risque. Clairtus sécurise vos fonds via des portefeuilles PawaPay régulés et débloque les paiements instantanément par code PIN. 100% sur WhatsApp. Zéro friction.",
+    "badge": "Le Standard Or des Transactions en RDC 🇨🇩",
+    "title": "Ne Vendez Plus Jamais à Découvert. Ne Payez Plus Jamais dans le Vide.",
+    "subtitle": "L'ultime bouclier de vos transactions. Vendeurs : encaissez à la seconde où vous livrez. Acheteurs : votre argent est scellé jusqu'à la réception. Zéro application. 100% via WhatsApp. L'ère des arnaques est officiellement révolue.",
     "primaryCta": "Sécuriser une transaction",
-    "secondaryCta": "Comment ça marche"
+    "secondaryCta": "Découvrir le protocole"
   },
   "stats": {
-    "rate": "100%",
-    "rateLabel": "Protection Anti-Fraude",
+    "rate": "Zéro",
+    "rateLabel": "Risque de Fraude",
     "salary": "< 3s",
-    "salaryLabel": "Vitesse de Décaissement",
-    "network": "Régulé",
-    "networkLabel": "Conformité Financière"
+    "salaryLabel": "Libération des Fonds",
+    "network": "100%",
+    "networkLabel": "Natif sur WhatsApp"
   },
   "features": {
-    "title": "Une architecture conçue pour la confiance absolue.",
-    "subtitle": "Des technologies de pointe au service de l'économie réelle.",
+    "title": "La technologie financière qui protège vos intérêts.",
+    "subtitle": "Une architecture de séquestre (escrow) de niveau institutionnel, conçue pour frapper fort et juste.",
     "items": [
       {
-        "title": "Garantie Anti-Fraude Absolue",
-        "description": "Les fonds des acheteurs sont séquestrés cryptographiquement dans des portefeuilles de collecte PawaPay sous licence jusqu'à la livraison physique."
+        "title": "Séquestre Inviolable",
+        "description": "L'argent de l'acheteur est cryptographiquement verrouillé dans un coffre-fort PawaPay. Le vendeur sait que l'argent est là avant même de bouger le petit doigt."
       },
       {
-        "title": "Liquidité Instantanée",
-        "description": "Validation binaire : Dès la saisie du PIN à 4 chiffres, l'API déclenche un virement vers le Mobile Money du vendeur en moins de 3 secondes."
+        "title": "Virements Supersoniques",
+        "description": "Oubliez l'attente. À l'instant exact où le code PIN à 4 chiffres est validé, les fonds explosent vers le compte Mobile Money du vendeur."
       },
       {
-        "title": "Friction Zéro (WhatsApp-Native)",
-        "description": "Oubliez les téléchargements d'applications. Clairtus s'intègre nativement à l'API Meta WhatsApp Cloud pour une adoption immédiate."
+        "title": "L'Expérience WhatsApp Native",
+        "description": "Aucune friction. Aucun mot de passe oublié. Pilotez vos contrats de vente et débloquez vos paiements directement depuis votre messagerie."
       },
       {
-        "title": "Arbitrage Humain Intégré",
-        "description": "En cas de litige à la livraison, le protocole gèle la transaction. Notre cellule de conformité prend le relais pour un dénouement équitable."
+        "title": "Résolution Implacable",
+        "description": "Colis non conforme ? Le paiement reste gelé. Notre protocole de litige protège l'acheteur tout en détruisant les tentatives de chantage au vendeur."
       }
     ]
   },
   "programs": {
-    "title": "Le Protocole Clairtus",
-    "subtitle": "Un flux transactionnel asynchrone, transparent et sécurisé.",
+    "title": "La Trinité de la Confiance.",
+    "subtitle": "Trois étapes. Zéro faille. Sécurisez n'importe quelle vente en moins de 60 secondes.",
     "items": [
       {
-        "title": "1. Initialisation",
-        "description": "Le vendeur configure les termes via notre bot. L'acheteur reçoit une URL chiffrée pour provisionner les fonds via Airtel, Orange ou M-Pesa."
+        "title": "1. Verrouillez l'Accord",
+        "description": "Le vendeur fixe le prix via le bot. L'acheteur dépose les fonds en un clic via M-Pesa, Airtel ou Orange Money. L'argent est instantanément mis sous cloche."
       },
       {
-        "title": "2. Séquestre & Code PIN",
-        "description": "Clairtus confirme la réception des fonds et génère un PIN unique à l'acheteur. Le vendeur est autorisé à expédier la marchandise sans risque."
+        "title": "2. Livrez Sans Trembler",
+        "description": "Clairtus émet un PIN secret à l'acheteur et donne le feu vert au vendeur. La marchandise peut voyager : le paiement est déjà mathématiquement garanti."
       },
       {
-        "title": "3. Décaissement",
-        "description": "À réception, l'acheteur transmet le PIN. Le vendeur le soumet au bot : la transaction est scellée et les fonds sont libérés instantanément."
+        "title": "3. Déclenchez le Paiement",
+        "description": "L'article est livré ? L'acheteur révèle son PIN. Le vendeur le tape sur WhatsApp et voit son solde Mobile Money crédité en temps réel."
       }
     ]
   },
   "cta": {
-    "title": "Passez à la norme supérieure.",
-    "subtitle": "Rejoignez les professionnels qui ont fait de Clairtus leur standard de transaction.",
-    "button": "Créer mon lien sécurisé"
+    "title": "Arrêtez de Parier. Commencez à Commercer.",
+    "subtitle": "Rejoignez l'élite des marchands de Kinshasa qui exigent la sécurité absolue pour chaque dollar transigé.",
+    "button": "Lancer mon premier contrat"
   },
   "footer": {
-    "description": "Clairtus — L'infrastructure de confiance pour l'économie informelle Africaine.",
+    "description": "Clairtus — Le moteur de confiance de l'économie Congolaise.",
     "rights": "© 2026 Clairtus. Tous droits réservés."
   }
 }
