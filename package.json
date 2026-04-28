@@ -1,0 +1,12 @@
+{
+  "name": "clairtus-mvp",
+  "private": true,
+  "description": "Clairtus escrow MVP — Next.js admin/marketing lives in admin-panel/",
+  "scripts": {
+    "build": "npm run build -w admin-panel",
+    "dev": "npm run dev -w admin-panel",
+    "lint": "npm run lint -w admin-panel",
+    "start": "npm run start -w admin-panel"
+  },
+  "workspaces": ["admin-panel"]
+}
