@@ -325,16 +325,31 @@ function parseGuidedFlowSelection(message: ParsedIncomingMessage): GuidedMode | 
 }
 
 function isFrenchGreeting(input: string): boolean {
-  const normalized = normalizeForRouting(input);
-  const compact = normalized.replace(/\s+/g, " ").trim();
+  const normalized = normalizeForRouting(input)
+    .replace(/[^A-Z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!normalized) {
+    return false;
+  }
+  const firstWord = normalized.split(" ")[0];
+  return ["BONJOUR", "SALUT", "BONSOIR", "COUCOU", "BSR", "SLT"].includes(firstWord);
+}
+
+function isGuidedRestartRequest(input: string): boolean {
+  const normalized = normalizeForRouting(input)
+    .replace(/[^A-Z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   return [
-    "BONJOUR",
-    "SALUT",
-    "BONSOIR",
-    "COUCOU",
-    "BSR",
-    "SLT",
-  ].includes(compact);
+    "NOUVELLE TRANSACTION",
+    "NOUVELLE",
+    "NOUVEAU",
+    "COMMENCER",
+    "RECOMMENCER",
+    "DEMARRER",
+    "START",
+  ].includes(normalized);
 }
 
 function parseAmountFromInput(input: string): number | null {
@@ -414,8 +429,8 @@ function buildRoleAwareFallbackMessage(
   }
   if (tx.status === "SECURED") {
     return isSeller
-      ? "🔐 Fonds sécurisés.\n\nEnvoyez maintenant le code PIN client à 4 chiffres pour recevoir le paiement."
-      : "🔐 Paiement sécurisé.\n\nPartagez votre code PIN uniquement au moment de la remise de l'article.";
+      ? "🔐 Fonds sécurisés pour une transaction active.\n\nSi vous avez le code PIN client, envoyez simplement les 4 chiffres.\nPour démarrer une nouvelle transaction, dites BONJOUR."
+      : "🔐 Paiement sécurisé pour une transaction active.\n\nPartagez votre code PIN uniquement à la remise de l'article.\nPour démarrer une nouvelle transaction, dites BONJOUR.";
   }
   if (tx.status === "PAYOUT_DELAYED") {
     return isSeller
@@ -966,6 +981,30 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
       transitionApplied: false,
       transitionDetails: {
         guided_draft_expired: true,
+        guided_menu_dispatched: menuSent,
+      },
+      responseDispatched: true,
+    };
+  }
+
+  if (isGuidedRestartRequest(message.textBody)) {
+    const fullName = `${identity.firstName ?? ""} ${identity.lastName ?? ""}`.trim();
+    const menuSent = await sendGuidedEntryButtons(message.senderPhoneE164, fullName || undefined);
+    return {
+      senderPhoneE164: message.senderPhoneE164,
+      messageType: message.messageType,
+      intent: "GUIDED_START",
+      normalizedInput: normalizedText,
+      transactionId: null,
+      action: null,
+      responseMessage: menuSent
+        ? "✅ Parfait.\n\nOn démarre une nouvelle transaction."
+        : "✅ Parfait.\n\nRépondez VENDRE ou ACHETER pour démarrer une nouvelle transaction.",
+      allowed: true,
+      rateLimitRemaining: null,
+      transitionApplied: false,
+      transitionDetails: {
+        guided_restart_requested: true,
         guided_menu_dispatched: menuSent,
       },
       responseDispatched: true,
@@ -2313,6 +2352,65 @@ async function dispatchResponseMessageIfNeeded(
   };
 }
 
+function isRoutingTraceEnabled(): boolean {
+  const raw = (Deno.env.get("ENABLE_ROUTING_TRACE_LOGS") ?? "false").trim().toLowerCase();
+  return raw === "true" || raw === "1" || raw === "yes" || raw === "on";
+}
+
+function buildRoutingTraceTag(message: RoutedMessage): string {
+  const intent = message.intent;
+  const allowed = message.allowed ? "ALLOWED" : "BLOCKED";
+  const transitioned = message.transitionApplied ? "TRANSITIONED" : "NO_TRANSITION";
+  const dispatched = message.responseDispatched ? "RESPONDED" : "NO_RESPONSE";
+  return `${intent}|${allowed}|${transitioned}|${dispatched}`;
+}
+
+async function maybeLogRoutingTrace(input: {
+  routedMessage: RoutedMessage;
+  parsedMessage: ParsedIncomingMessage;
+}): Promise<void> {
+  if (!isRoutingTraceEnabled()) {
+    return;
+  }
+
+  try {
+    const supabase = createServiceRoleClient();
+    const traceTag = buildRoutingTraceTag(input.routedMessage);
+    await supabase.from("error_logs").insert({
+      transaction_id: input.routedMessage.transactionId ?? null,
+      error_type: "ROUTING_TRACE",
+      error_message: traceTag,
+      error_details: {
+        component: "whatsapp-webhook",
+        sender_phone: input.routedMessage.senderPhoneE164,
+        message_type: input.parsedMessage.messageType,
+        original_text: input.parsedMessage.textBody,
+        button_payload: input.parsedMessage.buttonPayload,
+        intent: input.routedMessage.intent,
+        allowed: input.routedMessage.allowed,
+        transition_applied: input.routedMessage.transitionApplied,
+        response_dispatched: input.routedMessage.responseDispatched ?? false,
+        transition_details: input.routedMessage.transitionDetails,
+      },
+    });
+  } catch {
+    // Never block routing on trace logging.
+  }
+}
+
+function withRoutingTrace(
+  routedMessage: RoutedMessage,
+): RoutedMessage {
+  const traceTag = buildRoutingTraceTag(routedMessage);
+  return {
+    ...routedMessage,
+    transitionDetails: {
+      ...(routedMessage.transitionDetails ?? {}),
+      routing_trace_tag: traceTag,
+    },
+  };
+}
+
 serve(async (request: Request): Promise<Response> => {
   try {
     if (request.method !== "GET" && request.method !== "POST") {
@@ -2405,7 +2503,12 @@ serve(async (request: Request): Promise<Response> => {
       const responseDispatched = await dispatchResponseMessageIfNeeded(
         transactionTriggered,
       );
-      routedMessages.push(responseDispatched);
+      const tracedMessage = withRoutingTrace(responseDispatched);
+      await maybeLogRoutingTrace({
+        routedMessage: tracedMessage,
+        parsedMessage,
+      });
+      routedMessages.push(tracedMessage);
     }
 
     return jsonResponse(
