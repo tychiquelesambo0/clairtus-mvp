@@ -398,11 +398,39 @@ async function getLatestActiveTransactionForUser(
   return data as ActiveTransactionContextRow;
 }
 
+async function getLatestTransactionStatusForUser(
+  senderPhoneE164: string,
+): Promise<string | null> {
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("status")
+    .or(`seller_phone.eq.${senderPhoneE164},buyer_phone.eq.${senderPhoneE164}`)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+  return (data as { status: string }).status;
+}
+
 function buildRoleAwareFallbackMessage(
   senderPhoneE164: string,
   tx: ActiveTransactionContextRow | null,
+  latestStatus: string | null,
 ): string {
   if (!tx) {
+    if (latestStatus === "COMPLETED") {
+      return [
+        "✅ Votre dernière transaction est terminée.",
+        "",
+        "Souhaitez-vous démarrer une nouvelle transaction ?",
+        "Si oui, envoyez : BONJOUR",
+      ].join("\n");
+    }
+
     return [
       "Je n'ai pas compris votre message.",
       "",
@@ -1422,14 +1450,20 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
   }
 
   const activeTx = await getLatestActiveTransactionForUser(message.senderPhoneE164);
+  const latestStatus = await getLatestTransactionStatusForUser(message.senderPhoneE164);
   return {
     ...base,
-    responseMessage: buildRoleAwareFallbackMessage(message.senderPhoneE164, activeTx),
+    responseMessage: buildRoleAwareFallbackMessage(
+      message.senderPhoneE164,
+      activeTx,
+      latestStatus,
+    ),
     allowed: false,
     rateLimitRemaining: null,
     transitionApplied: false,
     transitionDetails: {
       active_context_status: activeTx?.status ?? null,
+      latest_transaction_status: latestStatus,
     },
   };
 }
