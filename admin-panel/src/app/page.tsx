@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
+import Image from "next/image";
 import {
   ArrowRightLeft,
   Fingerprint,
@@ -190,19 +191,37 @@ export default function Home() {
           </div>
 
           <div className="flex flex-col items-center justify-center pt-10 pb-20 opacity-70">
-            <p className="text-sm text-gray-400 font-semibold tracking-widest uppercase mb-6 text-center">
-              Fonds sécurisés via les opérateurs agréés en RDC
+            <p className="mb-6 px-4 text-center text-sm font-semibold text-gray-300">
+              Vos fonds sont securises par des partenaires de confiance en RDC
             </p>
-            <div className="flex flex-wrap justify-center gap-8 md:gap-12 items-center font-bold text-lg md:text-xl text-gray-300">
-              <span className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-500"></div> Airtel Money
-              </span>
-              <span className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-orange-500"></div> Orange Money
-              </span>
-              <span className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-blue-500"></div> M-Pesa
-              </span>
+            <div className="flex w-full max-w-3xl flex-wrap items-center justify-center gap-x-3 gap-y-3 px-2 pt-20 sm:gap-x-6 sm:gap-y-4 md:gap-8">
+              <div className="flex h-14 w-[150px] items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 backdrop-blur-sm sm:h-16 sm:w-[180px]">
+                <Image
+                  src="/logos/airtel.svg"
+                  alt="Airtel Money"
+                  width={140}
+                  height={40}
+                  className="h-6 w-auto object-contain sm:h-7"
+                />
+              </div>
+              <div className="flex h-14 w-[150px] items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 backdrop-blur-sm sm:h-16 sm:w-[180px]">
+                <Image
+                  src="/logos/orange.svg"
+                  alt="Orange Money"
+                  width={48}
+                  height={48}
+                  className="h-7 w-auto object-contain sm:h-8"
+                />
+              </div>
+              <div className="flex h-14 w-[150px] items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 backdrop-blur-sm sm:h-16 sm:w-[180px]">
+                <Image
+                  src="/logos/mpesa.svg"
+                  alt="M-Pesa"
+                  width={110}
+                  height={59}
+                  className="h-7 w-auto object-contain sm:h-8"
+                />
+              </div>
             </div>
           </div>
         </section>
