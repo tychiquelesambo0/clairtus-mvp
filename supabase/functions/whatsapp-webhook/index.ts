@@ -537,7 +537,7 @@ function buildTransactionsListMessage(senderPhoneE164: string, rows: UserTransac
     "",
     ...lines,
     "",
-    "Pour voir le détail, envoyez : DETAIL CLT-XXXXXX",
+    "Pour voir le détail, envoyez simplement : CLT-XXXXXX",
   ].join("\n");
 }
 
@@ -603,7 +603,7 @@ function buildRoleAwareFallbackMessage(
         "✅ Votre dernière transaction est terminée.",
         "",
         "Souhaitez-vous démarrer une nouvelle transaction ?",
-        "Si oui, envoyez : BONJOUR",
+        "Si oui, écrivez juste : BONJOUR",
       ].join("\n");
     }
 
@@ -611,7 +611,7 @@ function buildRoleAwareFallbackMessage(
       "Je n'ai pas compris votre message.",
       "",
       "Pour démarrer facilement :",
-      "• dites BONJOUR",
+      "• écrivez juste : BONJOUR",
       "• puis choisissez VENDRE ou ACHETER",
       "",
       "Pour annuler une transaction en attente : ANNULER",
@@ -633,8 +633,8 @@ function buildRoleAwareFallbackMessage(
   }
   if (tx.status === "SECURED") {
     return isSeller
-      ? "🔐 Fonds sécurisés pour une transaction active.\n\nSi vous avez le code PIN client, envoyez simplement les 4 chiffres.\nPour démarrer une nouvelle transaction, dites BONJOUR."
-      : "🔐 Paiement sécurisé pour une transaction active.\n\nPartagez votre code PIN uniquement à la remise de l'article.\nPour démarrer une nouvelle transaction, dites BONJOUR.";
+      ? "Vous avez le code PIN client ? Envoyez simplement les 4 chiffres.\n\nPour voir vos transactions, écrivez : MES TRANSACTIONS\nPour démarrer une nouvelle transaction, écrivez juste : BONJOUR"
+      : "Partagez votre code PIN uniquement au moment de la remise de l'article.\n\nPour voir vos transactions, écrivez : MES TRANSACTIONS\nPour démarrer une nouvelle transaction, écrivez juste : BONJOUR";
   }
   if (tx.status === "PAYOUT_DELAYED") {
     return isSeller
@@ -978,6 +978,17 @@ function detectIntent(message: ParsedIncomingMessage): {
       transactionId: null,
       action: null,
       reference: detailMatch[2],
+    };
+  }
+
+  const bareReferenceMatch = /^(CLT-[A-Z0-9]{6,12}|[A-Z0-9]{6,12})$/.exec(normalizedText);
+  if (bareReferenceMatch) {
+    return {
+      intent: "DETAIL_TRANSACTION",
+      normalizedInput,
+      transactionId: null,
+      action: null,
+      reference: bareReferenceMatch[1],
     };
   }
 
