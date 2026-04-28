@@ -76,6 +76,7 @@ type RoutedIntent =
   | "GUIDED_STEP"
   | "LIST_TRANSACTIONS"
   | "DETAIL_TRANSACTION"
+  | "REFERENCE_HELP"
   | "CANCEL_TRANSACTION"
   | "CREATE_TRANSACTION"
   | "BUTTON_ACCEPT"
@@ -981,14 +982,26 @@ function detectIntent(message: ParsedIncomingMessage): {
     };
   }
 
-  const bareReferenceMatch = /^(CLT-[A-Z0-9]{6,12}|[A-Z0-9]{6,12})$/.exec(normalizedText);
+  const bareReferenceMatch = /^(CLT[-\s]?[0-9A-F]{6,12}|[0-9A-F]{6,12})$/.exec(normalizedText);
   if (bareReferenceMatch) {
+    const candidate = bareReferenceMatch[1].replace(/\s+/g, "").replace(/^CLT(?!-)/, "CLT-");
     return {
       intent: "DETAIL_TRANSACTION",
       normalizedInput,
       transactionId: null,
       action: null,
-      reference: bareReferenceMatch[1],
+      reference: candidate,
+    };
+  }
+
+  const nearReferenceMatch = /^CLT[-\s]?[A-Z0-9]{1,20}$/.exec(normalizedText);
+  if (nearReferenceMatch) {
+    return {
+      intent: "REFERENCE_HELP",
+      normalizedInput,
+      transactionId: null,
+      action: null,
+      reference: null,
     };
   }
 
@@ -1709,6 +1722,18 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
         requested_reference: reference,
         resolved_transaction_id: row.id,
       },
+    };
+  }
+
+  if (intentResult.intent === "REFERENCE_HELP") {
+    return {
+      ...base,
+      responseMessage:
+        "Je n'ai pas reconnu cette référence.\n\nFormat attendu : CLT-XXXXXXXX\nExemple : CLT-739BF311\n\nVous pouvez aussi envoyer : MES TRANSACTIONS",
+      allowed: false,
+      rateLimitRemaining: null,
+      transitionApplied: false,
+      transitionDetails: null,
     };
   }
 
