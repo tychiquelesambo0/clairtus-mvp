@@ -74,6 +74,8 @@ interface RejectedIncomingMessage {
 type RoutedIntent =
   | "GUIDED_START"
   | "GUIDED_STEP"
+  | "LIST_TRANSACTIONS"
+  | "DETAIL_TRANSACTION"
   | "CANCEL_TRANSACTION"
   | "CREATE_TRANSACTION"
   | "BUTTON_ACCEPT"
@@ -97,6 +99,7 @@ interface RoutedMessage {
   transitionDetails: Record<string, unknown> | null;
   responseDispatched?: boolean;
   createTransactionMessageText?: string;
+  transactionReference?: string | null;
 }
 
 type GuidedMode = "SELL" | "BUY";
@@ -132,6 +135,18 @@ interface ActiveTransactionContextRow {
   seller_phone: string;
   buyer_phone: string;
   item_description: string | null;
+}
+
+interface UserTransactionRow {
+  id: string;
+  status: string;
+  item_description: string;
+  base_amount: number;
+  currency: string;
+  seller_phone: string;
+  buyer_phone: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface StateMachineCreateTransactionResponse {
@@ -364,6 +379,74 @@ function parseAmountFromInput(input: string): number | null {
   return Math.round(value * 100) / 100;
 }
 
+function buildTransactionReference(transactionId: string): string {
+  const compact = transactionId.replace(/-/g, "").toUpperCase();
+  return `CLT-${compact.slice(0, 8)}`;
+}
+
+function statusLabel(status: string): string {
+  switch (status) {
+    case "INITIATED":
+      return "En attente de réponse";
+    case "PENDING_FUNDING":
+      return "En attente de paiement";
+    case "SECURED":
+      return "Paiement sécurisé";
+    case "PAYOUT_DELAYED":
+      return "Transfert en attente réseau";
+    case "PAYOUT_FAILED":
+      return "Transfert à relancer";
+    case "PIN_FAILED_LOCKED":
+      return "Verrouillée (sécurité)";
+    case "COMPLETED":
+      return "Terminée";
+    case "CANCELLED":
+      return "Annulée";
+    default:
+      return status;
+  }
+}
+
+function roleLabel(senderPhone: string, row: UserTransactionRow): "Acheteur" | "Vendeur" {
+  return senderPhone === row.seller_phone ? "Vendeur" : "Acheteur";
+}
+
+function detailActionHint(senderPhone: string, row: UserTransactionRow): string {
+  const isSeller = senderPhone === row.seller_phone;
+  if (row.status === "INITIATED") {
+    return isSeller
+      ? "Action : en attente de la réponse de l'acheteur."
+      : "Action : utilisez ACCEPTER, REFUSER ou AIDE.";
+  }
+  if (row.status === "PENDING_FUNDING") {
+    return isSeller
+      ? "Action : attendez la confirmation du paiement acheteur."
+      : "Action : validez la demande Mobile Money.";
+  }
+  if (row.status === "SECURED") {
+    return isSeller
+      ? "Action : envoyez le code PIN client (4 chiffres)."
+      : "Action : partagez le code PIN uniquement à la remise.";
+  }
+  if (row.status === "PAYOUT_FAILED") {
+    return isSeller
+      ? "Action : utilisez RÉESSAYER ou AIDE."
+      : "Action : transfert en reprise côté vendeur.";
+  }
+  if (row.status === "PAYOUT_DELAYED") {
+    return isSeller
+      ? "Action : patientez ou utilisez RÉESSAYER / AIDE."
+      : "Action : transfert en attente réseau.";
+  }
+  if (row.status === "COMPLETED") {
+    return "Action : envoyez BONJOUR pour démarrer une nouvelle transaction.";
+  }
+  if (row.status === "CANCELLED") {
+    return "Action : transaction clôturée. Envoyez BONJOUR pour recommencer.";
+  }
+  return "Action : envoyez AIDE si vous avez besoin d'assistance.";
+}
+
 function shouldResumePendingActionAfterIdentity(intent: RoutedIntent): boolean {
   return [
     "CANCEL_TRANSACTION",
@@ -414,6 +497,99 @@ async function getLatestTransactionStatusForUser(
     return null;
   }
   return (data as { status: string }).status;
+}
+
+async function listUserTransactions(senderPhoneE164: string): Promise<UserTransactionRow[]> {
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(
+      "id, status, item_description, base_amount, currency, seller_phone, buyer_phone, created_at, updated_at",
+    )
+    .or(`seller_phone.eq.${senderPhoneE164},buyer_phone.eq.${senderPhoneE164}`)
+    .order("updated_at", { ascending: false })
+    .limit(5);
+
+  if (error || !data) {
+    return [];
+  }
+  return data as UserTransactionRow[];
+}
+
+function buildTransactionsListMessage(senderPhoneE164: string, rows: UserTransactionRow[]): string {
+  if (rows.length === 0) {
+    return [
+      "📭 Vous n'avez pas encore de transaction.",
+      "",
+      "Pour démarrer, envoyez : BONJOUR",
+    ].join("\n");
+  }
+
+  const lines = rows.map((row, index) => {
+    const ref = buildTransactionReference(row.id);
+    const role = roleLabel(senderPhoneE164, row);
+    const status = statusLabel(row.status);
+    return `${index + 1}) ${ref} • ${role}\n${row.item_description} • ${row.base_amount.toFixed(2)} $\nStatut : ${status}`;
+  });
+
+  return [
+    "📚 Vos transactions récentes :",
+    "",
+    ...lines,
+    "",
+    "Pour voir le détail, envoyez : DETAIL CLT-XXXXXX",
+  ].join("\n");
+}
+
+async function getTransactionByReferenceForUser(
+  senderPhoneE164: string,
+  reference: string,
+): Promise<UserTransactionRow | null> {
+  const normalizedRef = reference.replace(/^CLT-/i, "").trim().toLowerCase();
+  if (!/^[0-9a-f]{6,12}$/.test(normalizedRef)) {
+    return null;
+  }
+
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(
+      "id, status, item_description, base_amount, currency, seller_phone, buyer_phone, created_at, updated_at",
+    )
+    .or(`seller_phone.eq.${senderPhoneE164},buyer_phone.eq.${senderPhoneE164}`)
+    .order("updated_at", { ascending: false })
+    .limit(100);
+
+  if (error || !data) {
+    return null;
+  }
+
+  const rows = data as UserTransactionRow[];
+  return rows.find((row) => row.id.replace(/-/g, "").toLowerCase().startsWith(normalizedRef)) ??
+    null;
+}
+
+function buildTransactionDetailMessage(
+  senderPhoneE164: string,
+  row: UserTransactionRow,
+): string {
+  const ref = buildTransactionReference(row.id);
+  const role = roleLabel(senderPhoneE164, row);
+  const counterpartyPhone = senderPhoneE164 === row.seller_phone ? row.buyer_phone : row.seller_phone;
+  const status = statusLabel(row.status);
+  const hint = detailActionHint(senderPhoneE164, row);
+
+  return [
+    `📄 Détail ${ref}`,
+    "",
+    `Rôle : ${role}`,
+    `Contrepartie : ${counterpartyPhone}`,
+    `Article : ${row.item_description}`,
+    `Montant : ${row.base_amount.toFixed(2)} $`,
+    `Statut : ${status}`,
+    "",
+    hint,
+  ].join("\n");
 }
 
 function buildRoleAwareFallbackMessage(
@@ -678,6 +854,7 @@ function detectIntent(message: ParsedIncomingMessage): {
   normalizedInput: string;
   transactionId: string | null;
   action: TransactionButtonAction | PayoutButtonAction | null;
+  reference: string | null;
 } {
   const parsedPayoutPayload = parsePayoutButtonPayload(message.buttonPayload);
   if (parsedPayoutPayload) {
@@ -686,6 +863,7 @@ function detectIntent(message: ParsedIncomingMessage): {
       normalizedInput: parsedPayoutPayload.action,
       transactionId: parsedPayoutPayload.transactionId,
       action: parsedPayoutPayload.action,
+      reference: null,
     };
   }
 
@@ -697,6 +875,7 @@ function detectIntent(message: ParsedIncomingMessage): {
         normalizedInput: parsedPayload.action,
         transactionId: parsedPayload.transactionId,
         action: parsedPayload.action,
+        reference: null,
       };
     }
     if (parsedPayload.action === "REFUSER") {
@@ -705,6 +884,7 @@ function detectIntent(message: ParsedIncomingMessage): {
         normalizedInput: parsedPayload.action,
         transactionId: parsedPayload.transactionId,
         action: parsedPayload.action,
+        reference: null,
       };
     }
     if (parsedPayload.action === "ANNULER") {
@@ -713,6 +893,7 @@ function detectIntent(message: ParsedIncomingMessage): {
         normalizedInput: parsedPayload.action,
         transactionId: parsedPayload.transactionId,
         action: parsedPayload.action,
+        reference: null,
       };
     }
     return {
@@ -720,6 +901,7 @@ function detectIntent(message: ParsedIncomingMessage): {
       normalizedInput: parsedPayload.action,
       transactionId: parsedPayload.transactionId,
       action: parsedPayload.action,
+      reference: null,
     };
   }
 
@@ -733,34 +915,34 @@ function detectIntent(message: ParsedIncomingMessage): {
     const action = textActionMatch[1] as TransactionButtonAction;
     const transactionId = textActionMatch[2];
     if (action === "ACCEPTER") {
-      return { intent: "BUTTON_ACCEPT", normalizedInput, transactionId, action };
+      return { intent: "BUTTON_ACCEPT", normalizedInput, transactionId, action, reference: null };
     }
     if (action === "REFUSER") {
-      return { intent: "BUTTON_REJECT", normalizedInput, transactionId, action };
+      return { intent: "BUTTON_REJECT", normalizedInput, transactionId, action, reference: null };
     }
     if (action === "ANNULER") {
-      return { intent: "CANCEL_TRANSACTION", normalizedInput, transactionId, action };
+      return { intent: "CANCEL_TRANSACTION", normalizedInput, transactionId, action, reference: null };
     }
-    return { intent: "HUMAN_SUPPORT", normalizedInput, transactionId, action };
+    return { intent: "HUMAN_SUPPORT", normalizedInput, transactionId, action, reference: null };
   }
 
   const isAccept = normalizedInput.includes("ACCEPTER") ||
     normalizedInput.includes("ACCEPT");
   if (isAccept) {
-    return { intent: "BUTTON_ACCEPT", normalizedInput, transactionId: null, action: null };
+    return { intent: "BUTTON_ACCEPT", normalizedInput, transactionId: null, action: null, reference: null };
   }
 
   const isReject = normalizedInput.includes("REFUSER") ||
     normalizedInput.includes("REJECT");
   if (isReject) {
-    return { intent: "BUTTON_REJECT", normalizedInput, transactionId: null, action: null };
+    return { intent: "BUTTON_REJECT", normalizedInput, transactionId: null, action: null, reference: null };
   }
 
   const isSupport = normalizedInput === "AIDE" ||
     normalizedInput === "HELP" ||
     normalizedInput === "SUPPORT";
   if (isSupport) {
-    return { intent: "HUMAN_SUPPORT", normalizedInput, transactionId: null, action: null };
+    return { intent: "HUMAN_SUPPORT", normalizedInput, transactionId: null, action: null, reference: null };
   }
 
   const cancelActionMatch = /^(ANNULER|CANCEL)\s*([0-9a-fA-F-]{36})?$/.exec(normalizedText);
@@ -771,20 +953,45 @@ function detectIntent(message: ParsedIncomingMessage): {
       normalizedInput,
       transactionId,
       action: null,
+      reference: null,
+    };
+  }
+
+  if (normalizedInput === "MES TRANSACTIONS" || normalizedInput === "HISTORIQUE" ||
+    normalizedInput === "EN COURS") {
+    return {
+      intent: "LIST_TRANSACTIONS",
+      normalizedInput,
+      transactionId: null,
+      action: null,
+      reference: null,
+    };
+  }
+
+  const detailMatch = /^(DETAIL|DETAILS|STATUT|SUIVI)\s+(CLT-[A-Z0-9]{6,12}|[A-Z0-9]{6,12})$/.exec(
+    normalizedText,
+  );
+  if (detailMatch) {
+    return {
+      intent: "DETAIL_TRANSACTION",
+      normalizedInput,
+      transactionId: null,
+      action: null,
+      reference: detailMatch[2],
     };
   }
 
   const isPinInput = /^[0-9]{4}$/.test(normalizedText);
   if (isPinInput) {
-    return { intent: "SUBMIT_PIN", normalizedInput, transactionId: null, action: null };
+    return { intent: "SUBMIT_PIN", normalizedInput, transactionId: null, action: null, reference: null };
   }
 
   const isTransactionText = /^(VENTE|ACHAT)\b/.test(normalizedText);
   if (isTransactionText) {
-    return { intent: "CREATE_TRANSACTION", normalizedInput, transactionId: null, action: null };
+    return { intent: "CREATE_TRANSACTION", normalizedInput, transactionId: null, action: null, reference: null };
   }
 
-  return { intent: "UNKNOWN", normalizedInput, transactionId: null, action: null };
+  return { intent: "UNKNOWN", normalizedInput, transactionId: null, action: null, reference: null };
 }
 
 async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessage> {
@@ -1350,6 +1557,7 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
     action: intentResult.action,
     transitionApplied: false,
     transitionDetails: null,
+    transactionReference: intentResult.reference,
   };
 
   if (intentResult.intent === "CREATE_TRANSACTION") {
@@ -1434,6 +1642,62 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
       rateLimitRemaining: null,
       transitionApplied: false,
       transitionDetails: null,
+    };
+  }
+
+  if (intentResult.intent === "LIST_TRANSACTIONS") {
+    const rows = await listUserTransactions(message.senderPhoneE164);
+    return {
+      ...base,
+      responseMessage: buildTransactionsListMessage(message.senderPhoneE164, rows),
+      allowed: true,
+      rateLimitRemaining: null,
+      transitionApplied: false,
+      transitionDetails: {
+        listed_transactions_count: rows.length,
+      },
+    };
+  }
+
+  if (intentResult.intent === "DETAIL_TRANSACTION") {
+    const reference = intentResult.reference;
+    if (!reference) {
+      return {
+        ...base,
+        responseMessage:
+          "Référence manquante.\n\nUtilisez : DETAIL CLT-XXXXXX",
+        allowed: false,
+        rateLimitRemaining: null,
+        transitionApplied: false,
+        transitionDetails: null,
+      };
+    }
+
+    const row = await getTransactionByReferenceForUser(message.senderPhoneE164, reference);
+    if (!row) {
+      return {
+        ...base,
+        responseMessage:
+          "Transaction introuvable pour cette référence.\n\nEnvoyez MES TRANSACTIONS pour voir la liste.",
+        allowed: false,
+        rateLimitRemaining: null,
+        transitionApplied: false,
+        transitionDetails: {
+          requested_reference: reference,
+        },
+      };
+    }
+
+    return {
+      ...base,
+      responseMessage: buildTransactionDetailMessage(message.senderPhoneE164, row),
+      allowed: true,
+      rateLimitRemaining: null,
+      transitionApplied: false,
+      transitionDetails: {
+        requested_reference: reference,
+        resolved_transaction_id: row.id,
+      },
     };
   }
 
