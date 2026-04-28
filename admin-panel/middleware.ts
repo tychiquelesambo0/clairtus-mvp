@@ -6,7 +6,7 @@ export async function middleware(request: NextRequest) {
   const { response, user } = await updateSession(request);
   const { pathname } = request.nextUrl;
 
-  const isPublicRoute = pathname === "/login";
+  const isPublicRoute = pathname === "/login" || pathname === "/";
   const isAdminRoute = pathname.startsWith("/admin");
 
   if (!user && !isPublicRoute) {
@@ -16,7 +16,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (user && isPublicRoute) {
+  /* Marketing home (`/`) stays the public landing for everyone; staff use `/login` → dashboard. */
+  if (user && pathname === "/login") {
     const dashboardUrl = request.nextUrl.clone();
     dashboardUrl.pathname = "/dashboard";
     dashboardUrl.search = "";

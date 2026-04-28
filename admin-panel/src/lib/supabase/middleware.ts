@@ -11,10 +11,12 @@ export async function updateSession(request: NextRequest): Promise<SessionUpdate
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+  /* Avoid throwing in middleware: missing env (e.g. Vercel not configured yet) would 500 every route. */
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error(
-      "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY.",
+    console.error(
+      "[middleware] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY — auth disabled until set.",
     );
+    return { response: NextResponse.next({ request }), user: null };
   }
 
   const response = NextResponse.next({ request });
@@ -32,9 +34,13 @@ export async function updateSession(request: NextRequest): Promise<SessionUpdate
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  return { response, user };
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    return { response, user };
+  } catch (err) {
+    console.error("[middleware] supabase.auth.getUser failed:", err);
+    return { response: NextResponse.next({ request }), user: null };
+  }
 }

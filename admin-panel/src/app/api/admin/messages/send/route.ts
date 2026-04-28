@@ -56,15 +56,21 @@ async function sendWhatsAppTextMessage(input: {
   } | null;
 
   if (!response.ok) {
-    const errorMessage = "error" in (responseBody ?? {})
-      ? responseBody?.error?.message
-      : null;
+    const metaErr =
+      responseBody !== null &&
+      typeof responseBody === "object" &&
+      "error" in responseBody
+        ? (
+            responseBody as { error?: { message?: string } }
+          ).error?.message ?? null
+        : null;
     throw new Error(
-      errorMessage ?? `Meta send message failed with status ${response.status}.`,
+      metaErr ?? `Meta send message failed with status ${response.status}.`,
     );
   }
 
-  const whatsappMessageId = responseBody?.messages?.[0]?.id ?? null;
+  const whatsappMessageId =
+    (responseBody as MetaSendMessageResponse | null)?.messages?.[0]?.id ?? null;
   return { whatsappMessageId };
 }
 
