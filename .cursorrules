@@ -1,0 +1,28 @@
+# Clairtus MVP - Cursor AI Master Rules
+
+## 1. System & Architecture Strictness
+* **Runtime:** We are strictly using Supabase Edge Functions. This means the runtime is **Deno**, NOT Node.js. 
+* **Dependencies:** Do not use `npm install` or `package.json` for Edge Functions. Use Deno URL imports (e.g., `import { serve } from "https://deno.land/std@0.168.0/http/server.ts"`).
+* **Environment Variables:** Strictly use `Deno.env.get('VAR_NAME')`. NEVER use `process.env`.
+* **Database Client:** Use `@supabase/supabase-js`. When interacting with the DB from inside an Edge Function, initialize the client using the `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to bypass RLS for trusted backend operations.
+
+## 2. Business Logic Guardrails
+* **No Frontend UI:** Do NOT generate React, Vue, HTML, or CSS files. The entire UI is conversational via Meta WhatsApp Cloud API. (The Next.js Admin Panel is out of scope until Phase 6).
+* **Single Currency:** The system strictly uses USD. Never write logic for CDF, multi-currency conversions, or external FX APIs.
+* **Phone Numbers:** All phone numbers must be strictly normalized and stored in E.164 format (e.g., `+243...`).
+* **State Machine Purity:** Never bypass the `status` column in the `transactions` table. All bot responses and API triggers must be strictly dictated by the current transaction state.
+* **Idempotency (CRITICAL):** Always use the transaction `id` (UUID) as the `Idempotency-Key` header for all PawaPay API calls (Deposits, Payouts, Refunds).
+
+## 3. Code Quality & Formatting
+* **Strict TypeScript:** You must use strict typing. Do NOT use `any`. Define clear `Interfaces` or `Types` for all API payloads, database rows, and function parameters.
+* **Modularity:** Keep Edge Functions lean. Separate routing logic from business logic. Put shared utilities (like PIN generation, fee math, and signature validation) into a `supabase/functions/_shared/` folder.
+* **No Floating Promises:** Always use `async/await`. Handle all asynchronous operations explicitly.
+
+## 4. Error Handling & Resiliency
+* **Webhook Responses:** Webhook handlers (Meta and PawaPay) must return HTTP 200 as fast as possible to prevent timeouts and infinite retries from the providers. Process heavy database logic asynchronously if needed, or ensure the DB transactions are heavily optimized.
+* **Database Logging:** Catch all external API errors and database failures and log them directly into the `error_logs` table. Never allow an Edge Function to silently fail.
+
+## 5. Behavioral Rules for Cursor AI
+* **One Task at a Time:** Never attempt to execute multiple steps from `03_tasks.md` at once. Wait for my explicit command (e.g., "Execute Task 2.1") before writing or modifying code.
+* **Ask Before Assuming:** If a requirement in the tasks or design document is ambiguous, STOP and ask me a clarifying question. Do not guess or hallucinate features.
+* **No Feature Creep:** Stick strictly to the requirements. Do not add fractional delivery fees, subjective dispute workflows, or multi-language support.
