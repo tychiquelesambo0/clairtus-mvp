@@ -164,6 +164,15 @@ interface StateMachineCreateTransactionResponse {
       sent?: boolean;
       response_status?: number;
     };
+    template_dispatch?: {
+      sent?: boolean;
+      response_status?: number;
+    };
+    text_message_dispatch?: {
+      sent?: boolean;
+      response_status?: number;
+    };
+    counterparty_notified?: boolean;
   };
 }
 
@@ -2599,8 +2608,13 @@ async function triggerCreateTransaction(
   }
 
   const tx = parsedBody.transaction?.transaction;
-  const dispatch = parsedBody.transaction?.interactive_button_dispatch;
-  const dispatchSucceeded = dispatch?.sent === true;
+  const interactiveDispatch = parsedBody.transaction?.interactive_button_dispatch;
+  const templateDispatch = parsedBody.transaction?.template_dispatch;
+  const textDispatch = parsedBody.transaction?.text_message_dispatch;
+  const dispatchSucceeded = parsedBody.transaction?.counterparty_notified === true ||
+    templateDispatch?.sent === true ||
+    interactiveDispatch?.sent === true ||
+    textDispatch?.sent === true;
   const successMessage = dispatchSucceeded
     ? (tx?.id
       ? "✅ Transaction créée.\n\nLa contrepartie a bien été notifiée."
@@ -2618,8 +2632,12 @@ async function triggerCreateTransaction(
       error_details: {
         component: "whatsapp-webhook",
         transaction_id: tx?.id ?? null,
-        interactive_dispatch_sent: dispatch?.sent ?? null,
-        interactive_dispatch_status: dispatch?.response_status ?? null,
+        template_dispatch_sent: templateDispatch?.sent ?? null,
+        template_dispatch_status: templateDispatch?.response_status ?? null,
+        interactive_dispatch_sent: interactiveDispatch?.sent ?? null,
+        interactive_dispatch_status: interactiveDispatch?.response_status ?? null,
+        text_dispatch_sent: textDispatch?.sent ?? null,
+        text_dispatch_status: textDispatch?.response_status ?? null,
       },
     });
   }
@@ -2655,8 +2673,12 @@ async function triggerCreateTransaction(
       transaction_status: tx?.status ?? null,
       seller_phone: tx?.seller_phone ?? null,
       buyer_phone: tx?.buyer_phone ?? null,
-      interactive_dispatch_sent: dispatch?.sent ?? null,
-      interactive_dispatch_status: dispatch?.response_status ?? null,
+      template_dispatch_sent: templateDispatch?.sent ?? null,
+      template_dispatch_status: templateDispatch?.response_status ?? null,
+      interactive_dispatch_sent: interactiveDispatch?.sent ?? null,
+      interactive_dispatch_status: interactiveDispatch?.response_status ?? null,
+      text_dispatch_sent: textDispatch?.sent ?? null,
+      text_dispatch_status: textDispatch?.response_status ?? null,
       sender_ack_sent: senderAck.sent,
       sender_ack_status: senderAck.status,
       sender_prepayment_manage_sent: senderPrePaymentManageSent,

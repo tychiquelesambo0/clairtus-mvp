@@ -18,7 +18,10 @@ import { initiatePayoutForTransaction } from "../_shared/payoutFlow.ts";
 import { initiateRefundForTransaction } from "../_shared/refundFlow.ts";
 import { createServiceRoleClient } from "../_shared/supabaseClient.ts";
 import { getTrustScoresForParties } from "../_shared/trustScore.ts";
-import { sendWhatsAppTextMessage } from "../_shared/whatsappMessaging.ts";
+import {
+  sendWhatsAppTemplateMessage,
+  sendWhatsAppTextMessage,
+} from "../_shared/whatsappMessaging.ts";
 import {
   buildInitiatedTransactionButtons,
   buildInitiatedTransactionPrompt,
@@ -457,20 +460,43 @@ async function createTransactionFromMessage(
     ? parsed.buyerPhone
     : parsed.sellerPhone;
 
-  let interactiveDispatch: Record<string, unknown>;
-  try {
-    const bodyText = buildInitiatedTransactionPrompt({
+  const templateName = Deno.env.get("WHATSAPP_TRANSACTION_ALERT_TEMPLATE_NAME")?.trim() ?? "";
+  const templateLanguageCode = Deno.env.get("WHATSAPP_TRANSACTION_ALERT_TEMPLATE_LANG")?.trim() ||
+    "en_US";
+  let templateDispatch: { sent: boolean; response_status: number | null } = {
+    sent: false,
+    response_status: null,
+  };
+  if (templateName) {
+    const templateSendResult = await sendWhatsAppTemplateMessage({
+      recipientPhoneE164: counterpartyForPrompt,
+      templateName,
+      languageCode: templateLanguageCode,
       transactionId: insertedTransaction.id,
-      initiatorDisplayName,
-      recipientRole,
-      sellerPhone: parsed.sellerPhone,
-      itemDescription: parsed.itemDescription,
-      baseAmount: parsed.amount,
-      initiatorTrustScore: initiatorTrust.displayText,
     });
+    templateDispatch = {
+      sent: templateSendResult.sent,
+      response_status: templateSendResult.status,
+    };
+  }
+
+  let interactiveDispatch: { sent: boolean; response_status: number | null; error?: string } = {
+    sent: false,
+    response_status: null,
+  };
+  const interactiveBodyText = buildInitiatedTransactionPrompt({
+    transactionId: insertedTransaction.id,
+    initiatorDisplayName,
+    recipientRole,
+    sellerPhone: parsed.sellerPhone,
+    itemDescription: parsed.itemDescription,
+    baseAmount: parsed.amount,
+    initiatorTrustScore: initiatorTrust.displayText,
+  });
+  try {
     const sendResult = await sendInteractiveButtonsMessage({
       recipientPhoneE164: counterpartyForPrompt,
-      bodyText,
+      bodyText: interactiveBodyText,
       buttons: buildInitiatedTransactionButtons(insertedTransaction.id),
     });
     interactiveDispatch = {
@@ -495,6 +521,28 @@ async function createTransactionFromMessage(
     };
   }
 
+  const textFallbackMessage = [
+    "🛡️ Clairtus | Nouvelle transaction",
+    `Réf: ${insertedTransaction.id}`,
+    `Article: ${parsed.itemDescription}`,
+    `Montant: ${parsed.amount.toFixed(2)} USD`,
+    "",
+    "Répondez: ACCEPTER, REFUSER, ou AIDE.",
+  ].join("\n");
+  const textSendResult = await sendWhatsAppTextMessage({
+    recipientPhoneE164: counterpartyForPrompt,
+    messageText: textFallbackMessage,
+    transactionId: insertedTransaction.id,
+  });
+  const textDispatch = {
+    sent: textSendResult.sent,
+    response_status: textSendResult.status,
+  };
+
+  const counterpartyNotified = templateName
+    ? templateDispatch.sent
+    : (interactiveDispatch.sent || textDispatch.sent);
+
   return {
     transaction: insertedTransaction,
     trust_scores: {
@@ -517,7 +565,10 @@ async function createTransactionFromMessage(
     },
     trust_score_sla_met: trustScores.seller.latencyMs <= 500 &&
       trustScores.buyer.latencyMs <= 500,
+    template_dispatch: templateDispatch,
     interactive_button_dispatch: interactiveDispatch,
+    text_message_dispatch: textDispatch,
+    counterparty_notified: counterpartyNotified,
   };
 }
 

@@ -77,3 +77,65 @@ export async function sendWhatsAppTextMessage(input: {
     rawBody,
   };
 }
+
+export async function sendWhatsAppTemplateMessage(input: {
+  recipientPhoneE164: string;
+  templateName: string;
+  languageCode: string;
+  transactionId?: string;
+}): Promise<{ sent: boolean; status: number; rawBody: string }> {
+  const accessToken = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
+  const phoneNumberId = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
+  const apiVersion = Deno.env.get("WHATSAPP_API_VERSION") ?? "v18.0";
+
+  if (!accessToken || !phoneNumberId) {
+    throw new Error(
+      "Missing WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID for template send.",
+    );
+  }
+
+  const endpoint = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`;
+  const body = {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: toMetaPhoneRecipient(input.recipientPhoneE164),
+    type: "template",
+    template: {
+      name: input.templateName,
+      language: {
+        code: input.languageCode,
+      },
+    },
+  };
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  const rawBody = await response.text();
+  if (!response.ok) {
+    await logWhatsAppError(
+      input.transactionId ?? null,
+      `WhatsApp template send failed with status ${response.status}`,
+      {
+        endpoint,
+        recipient: input.recipientPhoneE164,
+        template_name: input.templateName,
+        template_language: input.languageCode,
+        response_status: response.status,
+        response_body: rawBody,
+      },
+    );
+  }
+
+  return {
+    sent: response.ok,
+    status: response.status,
+    rawBody,
+  };
+}
