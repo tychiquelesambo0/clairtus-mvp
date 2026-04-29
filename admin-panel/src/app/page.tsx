@@ -12,7 +12,7 @@ import {
   Terminal,
   Zap,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import content from "@/locales/fr.json";
 import { getWhatsAppBotUrl } from "@/lib/marketing-links";
 
@@ -23,6 +23,144 @@ const FEATURE_ICONS: LucideIcon[] = [
   Scale,
 ];
 const PROGRAM_ICONS: LucideIcon[] = [Terminal, LockKeyhole, ArrowRightLeft];
+type DemoView = "vendeur" | "acheteur";
+type ChatMessage = {
+  sender: "user" | "bot";
+  delay: number;
+  text: string;
+};
+const MIN_TYPING_LEAD_MS = 130;
+const MAX_TYPING_LEAD_MS = 880;
+
+function estimateTypingLeadMs(text: string): number {
+  const compactText = text.replace(/\s+/g, " ").trim();
+  const readingUnits = compactText.length * 8;
+  const punctuationBonus = (compactText.match(/[.,:;!?]/g) ?? []).length * 14;
+  const emojiBonus = (compactText.match(/[🔐✅🎉👏🥳💡⚠️👋]/g) ?? []).length * 24;
+  const estimate = 90 + readingUnits + punctuationBonus + emojiBonus;
+  return Math.max(MIN_TYPING_LEAD_MS, Math.min(MAX_TYPING_LEAD_MS, estimate));
+}
+const VENDEUR_CONVERSATION: ChatMessage[] = [
+  { sender: "user", delay: 0.5, text: "BONJOUR" },
+  {
+    sender: "bot",
+    delay: 1.5,
+    text:
+      "👋 Bonjour et bienvenue chez Clairtus.\n\nClairtus sécurise vos transactions entre acheteur et vendeur :\n• l'acheteur paie en sécurité\n• le vendeur est payé après confirmation\n• tout est tracé pour protéger les deux parties\n\nQue souhaitez-vous faire aujourd'hui ?\n[ VENDRE ]  [ ACHETER ]",
+  },
+  { sender: "user", delay: 3, text: "VENDRE" },
+  {
+    sender: "bot",
+    delay: 4,
+    text: "Parfait ✅\n\nDécrivez brièvement ce que vous vendez.\nExemple : MacBook Air M1 2020",
+  },
+  { sender: "user", delay: 5.2, text: "Smartphone Samsung A54 neuf" },
+  {
+    sender: "bot",
+    delay: 6.3,
+    text: "Super 👍\n\nQuel est le prix en $ ?\nRépondez uniquement avec un nombre.\nExemple : 900\n\n💡 Clairtus déduit 2,5% du montant total.",
+  },
+  { sender: "user", delay: 7.4, text: "120" },
+  {
+    sender: "bot",
+    delay: 8.5,
+    text:
+      "Parfait.\n\nEnvoyez maintenant le numéro de l'acheteur en format international.\nExemple : +243...\n\nLe numéro doit appartenir à la contrepartie et être valide pour Mobile Money.\nOpérateurs supportés : M-Pesa, Orange Money, Airtel Money.",
+  },
+  { sender: "user", delay: 9.8, text: "+243 81 000 0000" },
+  {
+    sender: "bot",
+    delay: 10.8,
+    text: "✅ Merci.\n\nNous lançons votre transaction sécurisée.",
+  },
+  {
+    sender: "bot",
+    delay: 12,
+    text:
+      "✅ La contrepartie a accepté.\n\nNous attendons maintenant la confirmation du paiement Mobile Money.",
+  },
+  {
+    sender: "bot",
+    delay: 13.6,
+    text:
+      "✅ Fonds sécurisés.\n\nLe client a bloqué 120.00 USD.\n\nLivrez la commande, puis demandez le code PIN client et envoyez-le ici pour être payé.",
+  },
+  { sender: "user", delay: 15, text: "4829" },
+  {
+    sender: "bot",
+    delay: 16.1,
+    text: "🔐 Code PIN reçu.\n\nVérification en cours.",
+  },
+  {
+    sender: "bot",
+    delay: 17.3,
+    text: "🎉 Paiement confirmé.\n\nCode PIN validé.\nVos fonds (117.00 USD) sont en route vers votre compte Mobile Money.",
+  },
+  {
+    sender: "bot",
+    delay: 18.4,
+    text:
+      "👏 Félicitations pour la vente de Smartphone Samsung A54 neuf.\n\nContinuez à vendre avec Clairtus pour des transactions toujours sécurisées.",
+  },
+];
+const ACHETEUR_CONVERSATION: ChatMessage[] = [
+  { sender: "user", delay: 0.5, text: "BONJOUR" },
+  {
+    sender: "bot",
+    delay: 1.5,
+    text:
+      "👋 Bonjour et bienvenue chez Clairtus.\n\nClairtus sécurise vos transactions entre acheteur et vendeur :\n• l'acheteur paie en sécurité\n• le vendeur est payé après confirmation\n• tout est tracé pour protéger les deux parties\n\nQue souhaitez-vous faire aujourd'hui ?\n[ VENDRE ]  [ ACHETER ]",
+  },
+  { sender: "user", delay: 3, text: "ACHETER" },
+  {
+    sender: "bot",
+    delay: 4,
+    text: "Parfait ✅\n\nDécrivez brièvement ce que vous achetez.\nExemple : MacBook Air M1 2020",
+  },
+  { sender: "user", delay: 5.2, text: "Smartphone Samsung A54 neuf" },
+  {
+    sender: "bot",
+    delay: 6.3,
+    text:
+      "Super 👍\n\nQuel est le prix en $ ?\nRépondez uniquement avec un nombre.\nExemple : 900\n\n💡 En tant qu'acheteur, vous payez les frais Mobile Money opérateur.",
+  },
+  { sender: "user", delay: 7.4, text: "120" },
+  {
+    sender: "bot",
+    delay: 8.5,
+    text:
+      "Parfait.\n\nEnvoyez maintenant le numéro du vendeur en format international.\nExemple : +243...\n\nLe numéro doit appartenir à la contrepartie et être valide pour Mobile Money.\nOpérateurs supportés : M-Pesa, Orange Money, Airtel Money.",
+  },
+  { sender: "user", delay: 9.8, text: "+243 89 000 0000" },
+  {
+    sender: "bot",
+    delay: 10.8,
+    text: "✅ Merci.\n\nNous lançons votre transaction sécurisée.",
+  },
+  {
+    sender: "bot",
+    delay: 12,
+    text:
+      "✅ Confirmation enregistrée.\n\nOuvrez ce lien pour sécuriser le paiement :\nhttps://pay.clairtus.app/checkout/txn-demo\n\n💡 Les frais Mobile Money opérateur restent à la charge de l'acheteur.",
+  },
+  {
+    sender: "bot",
+    delay: 13.6,
+    text:
+      "🔐 Paiement sécurisé.\n\nVoici votre code PIN de livraison : 4829\n\n⚠️ Ne partagez jamais ce code par téléphone.\nNe le donnez qu'au moment où vous recevez l'article.",
+  },
+  {
+    sender: "bot",
+    delay: 16,
+    text: "✅ Transaction terminée.\n\nLe vendeur a reçu son paiement.",
+  },
+  {
+    sender: "bot",
+    delay: 17.2,
+    text:
+      "🥳 Félicitations pour votre achat de Smartphone Samsung A54 neuf.\n\nContinuez à acheter avec Clairtus en toute confiance.",
+  },
+];
 
 const viewportOnce = { once: true as const, margin: "-12% 0px -12% 0px", amount: 0.25 };
 
@@ -139,55 +277,66 @@ export default function Home() {
             />
           </div>
 
-          <div className="relative mx-auto w-full max-w-4xl text-center">
-            <motion.div
-              initial={prefersReducedMotion ? false : { opacity: 0, y: 28 }}
-              animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
-              transition={transition}
-            >
-              <p className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-sm font-semibold text-primary backdrop-blur-md">
-                {content.hero.badge}
-              </p>
-            </motion.div>
+          <div className="relative mx-auto w-full max-w-6xl">
+            <div className="grid items-center gap-12 lg:grid-cols-2">
+              <div className="text-center lg:text-left">
+                <motion.div
+                  initial={prefersReducedMotion ? false : { opacity: 0, y: 28 }}
+                  animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
+                  transition={transition}
+                >
+                  <p className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-sm font-semibold text-primary backdrop-blur-md">
+                    {content.hero.badge}
+                  </p>
+                </motion.div>
 
-            <motion.h1
-              id="hero-title"
-              className="mt-8 text-[clamp(2rem,6vw,3.75rem)] font-bold leading-[1.07] tracking-tight text-white"
-              initial={prefersReducedMotion ? false : { opacity: 0, y: 32 }}
-              animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
-              transition={{ ...transition, delay: prefersReducedMotion ? 0 : 0.06 }}
-            >
-              {content.hero.title}
-            </motion.h1>
+                <motion.h1
+                  id="hero-title"
+                  className="mt-8 text-[clamp(2rem,6vw,3.75rem)] font-bold leading-[1.07] tracking-tight text-white"
+                  initial={prefersReducedMotion ? false : { opacity: 0, y: 32 }}
+                  animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
+                  transition={{ ...transition, delay: prefersReducedMotion ? 0 : 0.06 }}
+                >
+                  {content.hero.title}
+                </motion.h1>
 
-            <motion.p
-              className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-white/[0.68] sm:text-xl"
-              initial={prefersReducedMotion ? false : { opacity: 0, y: 24 }}
-              animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
-              transition={{ ...transition, delay: prefersReducedMotion ? 0 : 0.12 }}
-            >
-              {content.hero.subtitle}
-            </motion.p>
+                <motion.p
+                  className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-white/[0.68] sm:text-xl lg:mx-0"
+                  initial={prefersReducedMotion ? false : { opacity: 0, y: 24 }}
+                  animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
+                  transition={{ ...transition, delay: prefersReducedMotion ? 0 : 0.12 }}
+                >
+                  {content.hero.subtitle}
+                </motion.p>
 
-            <motion.div
-              className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row"
-              initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
-              animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
-              transition={{ ...transition, delay: prefersReducedMotion ? 0 : 0.18 }}
-            >
-              <a
-                href={whatsappBotUrl}
-                className="inline-flex min-h-[52px] min-w-[220px] items-center justify-center rounded-full bg-primary px-10 text-base font-semibold text-primary-foreground shadow-[0_0_52px_-8px_hsl(var(--primary)/0.85)] transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                <motion.div
+                  className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row lg:justify-start"
+                  initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
+                  animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
+                  transition={{ ...transition, delay: prefersReducedMotion ? 0 : 0.18 }}
+                >
+                  <a
+                    href={whatsappBotUrl}
+                    className="inline-flex min-h-[52px] min-w-[220px] items-center justify-center rounded-full bg-primary px-10 text-base font-semibold text-primary-foreground shadow-[0_0_52px_-8px_hsl(var(--primary)/0.85)] transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    {content.hero.primaryCta}
+                  </a>
+                  <a
+                    href="#etapes"
+                    className="inline-flex min-h-[52px] min-w-[220px] items-center justify-center rounded-full border border-white/20 bg-white/5 px-10 text-base font-semibold text-white backdrop-blur-md transition-colors hover:border-white/35 hover:bg-white/10"
+                  >
+                    {content.hero.secondaryCta}
+                  </a>
+                </motion.div>
+              </div>
+              <motion.div
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 32 }}
+                animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
+                transition={{ ...transition, delay: prefersReducedMotion ? 0 : 0.22 }}
               >
-                {content.hero.primaryCta}
-              </a>
-              <a
-                href="#etapes"
-                className="inline-flex min-h-[52px] min-w-[220px] items-center justify-center rounded-full border border-white/20 bg-white/5 px-10 text-base font-semibold text-white backdrop-blur-md transition-colors hover:border-white/35 hover:bg-white/10"
-              >
-                {content.hero.secondaryCta}
-              </a>
-            </motion.div>
+                <InteractiveChatDemo prefersReducedMotion={!!prefersReducedMotion} />
+              </motion.div>
+            </div>
           </div>
 
           <div className="flex flex-col items-center justify-center pt-10 pb-20 opacity-70">
@@ -488,5 +637,196 @@ function ProgramStep({
       <h3 className="text-lg font-semibold leading-snug text-white">{title}</h3>
       <p className="mt-4 max-w-sm text-[15px] leading-relaxed text-white/[0.72]">{description}</p>
     </motion.div>
+  );
+}
+
+function InteractiveChatDemo({ prefersReducedMotion }: { prefersReducedMotion: boolean }) {
+  const [view, setView] = useState<DemoView>("vendeur");
+  const [visibleCount, setVisibleCount] = useState(0);
+  const [typing, setTyping] = useState(false);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const bottomAnchorRef = useRef<HTMLDivElement | null>(null);
+  const messages = useMemo(
+    () => (view === "vendeur" ? VENDEUR_CONVERSATION : ACHETEUR_CONVERSATION),
+    [view],
+  );
+  const visibleMessages = messages.slice(0, visibleCount);
+
+  useEffect(() => {
+    const timeoutIds: number[] = [];
+    timeoutIds.push(
+      window.setTimeout(() => {
+        setVisibleCount(prefersReducedMotion ? messages.length : 0);
+        setTyping(false);
+      }, 0),
+    );
+
+    if (prefersReducedMotion) {
+      return () => {
+        timeoutIds.forEach((id) => window.clearTimeout(id));
+      };
+    }
+
+    messages.forEach((message, index) => {
+      const typingLead = estimateTypingLeadMs(message.text);
+      const typingDelay = Math.max(message.delay * 1000 - typingLead, 0);
+      const messageDelay = message.delay * 1000;
+
+      if (message.sender === "bot") {
+        timeoutIds.push(
+          window.setTimeout(() => {
+            setTyping(true);
+          }, typingDelay),
+        );
+      }
+
+      timeoutIds.push(
+        window.setTimeout(() => {
+          setVisibleCount(index + 1);
+          if (message.sender === "bot") {
+            setTyping(false);
+          }
+        }, messageDelay),
+      );
+    });
+
+    return () => {
+      timeoutIds.forEach((id) => window.clearTimeout(id));
+    };
+  }, [messages, prefersReducedMotion, view]);
+
+  useLayoutEffect(() => {
+    if (!scrollRef.current) {
+      return;
+    }
+
+    const rafId = window.requestAnimationFrame(() => {
+      bottomAnchorRef.current?.scrollIntoView({
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+        block: "end",
+      });
+    });
+    return () => window.cancelAnimationFrame(rafId);
+  }, [prefersReducedMotion, typing, view, visibleCount]);
+
+  return (
+    <div className="mx-auto flex w-full max-w-[360px] flex-col items-center px-2 sm:px-0">
+      <div className="mb-5 inline-flex flex-wrap items-center justify-center rounded-full border border-white/10 bg-white/[0.04] p-1 backdrop-blur-md">
+        <button
+          type="button"
+          onClick={() => setView("vendeur")}
+          className={`relative rounded-full px-4 py-2 text-xs font-semibold transition-colors sm:text-sm ${
+            view === "vendeur" ? "text-primary-foreground" : "text-slate-300 hover:text-white"
+          }`}
+        >
+          {view === "vendeur" && (
+            <motion.span
+              layoutId="toggle-pill"
+              className="absolute inset-0 -z-10 rounded-full bg-primary shadow-lg shadow-primary/30"
+              transition={{ type: "spring", stiffness: 360, damping: 28 }}
+            />
+          )}
+          Vue Vendeur
+        </button>
+        <button
+          type="button"
+          onClick={() => setView("acheteur")}
+          className={`relative rounded-full px-4 py-2 text-xs font-semibold transition-colors sm:text-sm ${
+            view === "acheteur" ? "text-primary-foreground" : "text-slate-300 hover:text-white"
+          }`}
+        >
+          {view === "acheteur" && (
+            <motion.span
+              layoutId="toggle-pill"
+              className="absolute inset-0 -z-10 rounded-full bg-primary shadow-lg shadow-primary/30"
+              transition={{ type: "spring", stiffness: 360, damping: 28 }}
+            />
+          )}
+          Vue Acheteur
+        </button>
+      </div>
+
+      <div className="mx-auto w-full max-w-[320px] overflow-hidden rounded-3xl border-[6px] border-gray-800 bg-[#0b141a] shadow-2xl shadow-primary/20">
+        <div className="flex items-center justify-between border-b border-white/10 bg-[#202c33] px-4 py-3 text-sm font-medium text-slate-100">
+          <span className="truncate">🔒 Clairtus Bot</span>
+          <span className="text-[11px] text-emerald-300">en ligne</span>
+        </div>
+
+        <div
+          ref={scrollRef}
+          className="h-[420px] overflow-y-auto bg-[#0b141a] px-3 py-3 [scrollbar-color:#334155_transparent] [scrollbar-width:thin]"
+        >
+          <motion.div key={view} className="space-y-2.5">
+            {visibleMessages.map((message, index) => {
+              const isUser = message.sender === "user";
+              const textLength = message.text.length;
+              const enterDuration = isUser
+                ? 0.14
+                : Math.min(0.34, 0.16 + textLength * 0.0005);
+              return (
+                <motion.div
+                  key={`${view}-${index}`}
+                  layout
+                  className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+                  initial={prefersReducedMotion ? false : { opacity: 0, y: 12 }}
+                  animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
+                  transition={{
+                    duration: prefersReducedMotion ? 0.01 : enterDuration,
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
+                >
+                  <div
+                    className={`relative max-w-[88%] rounded-2xl px-3 py-2 text-[11px] leading-relaxed sm:max-w-[86%] sm:text-xs ${
+                      isUser
+                        ? "rounded-br-md bg-[#005c4b] text-[#e9fef6]"
+                        : "rounded-bl-md bg-[#202c33] text-[#e9edef]"
+                    }`}
+                  >
+                    <span
+                      aria-hidden
+                      className={`absolute bottom-0 h-2.5 w-2.5 rotate-45 ${
+                        isUser ? "right-[-4px] bg-[#005c4b]" : "left-[-4px] bg-[#202c33]"
+                      }`}
+                    />
+                    <span className="relative whitespace-pre-line">{message.text}</span>
+                  </div>
+                </motion.div>
+              );
+            })}
+            {typing && (
+              <motion.div
+                className="flex justify-start"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.18 }}
+              >
+                <div className="relative rounded-2xl rounded-bl-md bg-[#202c33] px-3 py-2">
+                  <span aria-hidden className="absolute bottom-0 left-[-4px] h-2.5 w-2.5 rotate-45 bg-[#202c33]" />
+                  <div className="flex items-center gap-1.5">
+                    <motion.span
+                      className="h-1.5 w-1.5 rounded-full bg-slate-300/80"
+                      animate={{ opacity: [0.35, 1, 0.35] }}
+                      transition={{ duration: 0.9, repeat: Infinity, delay: 0 }}
+                    />
+                    <motion.span
+                      className="h-1.5 w-1.5 rounded-full bg-slate-300/80"
+                      animate={{ opacity: [0.35, 1, 0.35] }}
+                      transition={{ duration: 0.9, repeat: Infinity, delay: 0.15 }}
+                    />
+                    <motion.span
+                      className="h-1.5 w-1.5 rounded-full bg-slate-300/80"
+                      animate={{ opacity: [0.35, 1, 0.35] }}
+                      transition={{ duration: 0.9, repeat: Infinity, delay: 0.3 }}
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+            <div ref={bottomAnchorRef} aria-hidden />
+          </motion.div>
+        </div>
+      </div>
+    </div>
   );
 }
