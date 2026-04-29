@@ -245,7 +245,7 @@ export default function Home() {
           <span className="text-lg font-bold tracking-tight text-primary">Clairtus</span>
           <a
             href={whatsappBotUrl}
-            className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-transform hover:scale-[1.02] active:scale-[0.98]"
+            className="rounded-full bg-primary px-4 py-2 text-sm font-semibold font-heading text-primary-foreground shadow-lg shadow-primary/25 transition-transform hover:scale-[1.02] active:scale-[0.98]"
           >
             {content.nav.apply}
           </a>
@@ -294,7 +294,7 @@ export default function Home() {
 
                 <motion.h1
                   id="hero-title"
-                  className="mt-8 text-[clamp(2rem,6vw,3.75rem)] font-bold leading-[1.07] tracking-tight text-white"
+                  className="mt-8 text-[clamp(2rem,6vw,3.75rem)] font-bold font-heading leading-[1.07] tracking-tight text-white"
                   initial={prefersReducedMotion ? false : { opacity: 0, y: 32 }}
                   animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
                   transition={{ ...transition, delay: prefersReducedMotion ? 0 : 0.06 }}
@@ -319,7 +319,7 @@ export default function Home() {
                 >
                   <a
                     href={whatsappBotUrl}
-                    className="inline-flex min-h-[52px] min-w-[220px] items-center justify-center rounded-full bg-primary px-10 text-base font-semibold text-primary-foreground shadow-[0_0_52px_-8px_hsl(var(--primary)/0.85)] transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                    className="inline-flex min-h-[52px] min-w-[220px] items-center justify-center rounded-full bg-primary px-10 text-base font-semibold font-heading text-primary-foreground shadow-[0_0_52px_-8px_hsl(var(--primary)/0.85)] transition-transform hover:scale-[1.02] active:scale-[0.98]"
                   >
                     {content.hero.primaryCta}
                   </a>
@@ -416,7 +416,7 @@ export default function Home() {
           <div className={`mx-auto ${pageMaxWidthClass}`}>
             <motion.h2
               id="features-heading"
-              className="mx-auto max-w-3xl text-center text-[clamp(1.75rem,4vw,2.5rem)] font-bold leading-tight tracking-tight text-white"
+              className="mx-auto max-w-3xl text-center text-[clamp(1.75rem,4vw,2.5rem)] font-bold font-heading leading-tight tracking-tight text-white"
               initial={prefersReducedMotion ? false : { opacity: 0, y: 28 }}
               whileInView={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
               viewport={viewportOnce}
@@ -465,7 +465,7 @@ export default function Home() {
           <div className={`relative mx-auto ${pageMaxWidthClass}`}>
             <motion.h2
               id="how-heading"
-              className="mx-auto max-w-3xl text-center text-[clamp(1.75rem,4vw,2.35rem)] font-bold leading-tight tracking-tight text-white"
+              className="mx-auto max-w-3xl text-center text-[clamp(1.75rem,4vw,2.35rem)] font-bold font-heading leading-tight tracking-tight text-white"
               initial={prefersReducedMotion ? false : { opacity: 0, y: 28 }}
               whileInView={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
               viewport={viewportOnce}
@@ -532,7 +532,7 @@ export default function Home() {
           >
             <h2
               id="cta-heading"
-              className="text-[clamp(1.85rem,4.2vw,2.75rem)] font-bold leading-tight tracking-tight text-white"
+              className="text-[clamp(1.85rem,4.2vw,2.75rem)] font-bold font-heading leading-tight tracking-tight text-white"
             >
               {content.cta.title}
             </h2>
@@ -541,7 +541,7 @@ export default function Home() {
             </p>
             <a
               href={whatsappBotUrl}
-              className="relative mt-12 inline-flex min-h-[56px] min-w-[min(100%,300px)] items-center justify-center overflow-hidden rounded-full bg-primary px-12 text-lg font-semibold text-primary-foreground shadow-[0_0_60px_-10px_hsl(var(--primary)/0.9)] transition-transform hover:scale-[1.03] active:scale-[0.98]"
+              className="relative mt-12 inline-flex min-h-[56px] min-w-[min(100%,300px)] items-center justify-center overflow-hidden rounded-full bg-primary px-12 text-lg font-semibold font-heading text-primary-foreground shadow-[0_0_60px_-10px_hsl(var(--primary)/0.9)] transition-transform hover:scale-[1.03] active:scale-[0.98]"
             >
               <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent motion-reduce:hidden" />
               {content.cta.button}
@@ -608,7 +608,7 @@ function FeatureCard({
       <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
         <Icon size={24} strokeWidth={1.75} aria-hidden />
       </div>
-      <h3 className="text-lg font-semibold leading-snug text-white sm:text-xl">{title}</h3>
+      <h3 className="text-lg font-semibold font-heading leading-snug text-white sm:text-xl">{title}</h3>
       <p className="mt-3 text-[15px] leading-relaxed text-white/[0.72]">{description}</p>
     </motion.article>
   );
@@ -636,7 +636,7 @@ function ProgramStep({
       <div className="mb-4 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
         <Icon size={24} strokeWidth={1.75} aria-hidden />
       </div>
-      <h3 className="text-lg font-semibold leading-snug text-white">{title}</h3>
+      <h3 className="text-lg font-semibold font-heading leading-snug text-white">{title}</h3>
       <p className="mt-4 max-w-sm text-[15px] leading-relaxed text-white/[0.72]">{description}</p>
     </motion.div>
   );
