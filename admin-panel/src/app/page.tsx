@@ -192,34 +192,34 @@ export default function Home() {
 
           <div className="flex flex-col items-center justify-center pt-10 pb-20 opacity-70">
             <p className="mb-6 px-4 text-center text-sm font-semibold text-gray-300">
-              Vos fonds sont securises par des partenaires de confiance en RDC
+              Vos fonds sont sécurisés par des partenaires de confiance en RDC
             </p>
             <div className="flex w-full max-w-3xl flex-wrap items-center justify-center gap-x-3 gap-y-3 px-2 pt-20 sm:gap-x-6 sm:gap-y-4 md:gap-8">
-              <div className="flex h-14 w-[150px] items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 backdrop-blur-sm sm:h-16 sm:w-[180px]">
+              <div className="group flex h-14 w-[150px] items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-white/[0.08] sm:h-16 sm:w-[180px]">
                 <Image
                   src="/logos/airtel.svg"
                   alt="Airtel Money"
                   width={140}
                   height={40}
-                  className="h-6 w-auto object-contain sm:h-7"
+                  className="h-6 w-auto object-contain transition-transform duration-300 group-hover:scale-105 sm:h-7"
                 />
               </div>
-              <div className="flex h-14 w-[150px] items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 backdrop-blur-sm sm:h-16 sm:w-[180px]">
+              <div className="group flex h-14 w-[150px] items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-white/[0.08] sm:h-16 sm:w-[180px]">
                 <Image
                   src="/logos/orange.svg"
                   alt="Orange Money"
                   width={48}
                   height={48}
-                  className="h-7 w-auto object-contain sm:h-8"
+                  className="h-7 w-auto object-contain transition-transform duration-300 group-hover:scale-105 sm:h-8"
                 />
               </div>
-              <div className="flex h-14 w-[150px] items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 backdrop-blur-sm sm:h-16 sm:w-[180px]">
+              <div className="group flex h-14 w-[150px] items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-white/[0.08] sm:h-16 sm:w-[180px]">
                 <Image
                   src="/logos/mpesa.svg"
                   alt="M-Pesa"
                   width={110}
                   height={59}
-                  className="h-7 w-auto object-contain sm:h-8"
+                  className="h-7 w-auto object-contain transition-transform duration-300 group-hover:scale-105 sm:h-8"
                 />
               </div>
             </div>
