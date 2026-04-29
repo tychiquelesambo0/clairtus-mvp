@@ -241,7 +241,7 @@ export default function Home() {
       </a>
 
       <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-[#020617]/80 backdrop-blur-xl">
-        <div className={`mx-auto flex h-16 ${pageMaxWidthClass} items-center justify-between px-0 sm:px-2 lg:px-4`}>
+        <div className={`mx-auto flex h-16 ${pageMaxWidthClass} items-center justify-between ${pageGutterClass}`}>
           <Image
             src="/logo-clairtus.svg"
             alt="Clairtus"
@@ -589,7 +589,7 @@ function StatBlock({
       viewport={viewportOnce}
       transition={{ ...transition, delay: prefersReducedMotion ? 0 : delay }}
     >
-      <div className="font-mono text-5xl font-bold tabular-nums tracking-tight text-primary sm:text-6xl">
+      <div className="text-5xl font-bold tabular-nums tracking-tight text-primary sm:text-6xl">
         {value}
       </div>
       <div className="mt-3 text-[15px] font-medium text-slate-400">{label}</div>
