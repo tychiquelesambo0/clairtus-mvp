@@ -166,6 +166,8 @@ const viewportOnce = { once: true as const, margin: "-12% 0px -12% 0px", amount:
 
 const glassCardClass =
   "bg-white/[0.02] border border-white/5 rounded-2xl p-6 hover:bg-white/[0.04] hover:border-primary/30 transition-all duration-300 backdrop-blur-sm";
+const pageGutterClass = "px-2 sm:px-4 lg:px-6";
+const pageMaxWidthClass = "max-w-7xl";
 
 export default function Home() {
   const prefersReducedMotion = useReducedMotion();
@@ -239,7 +241,7 @@ export default function Home() {
       </a>
 
       <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-[#020617]/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+        <div className={`mx-auto flex h-16 ${pageMaxWidthClass} items-center justify-between ${pageGutterClass}`}>
           <span className="text-lg font-bold tracking-tight text-primary">Clairtus</span>
           <a
             href={whatsappBotUrl}
@@ -253,7 +255,7 @@ export default function Home() {
       <main id="contenu-principal">
         {/* —— Hero —— */}
         <section
-          className="relative flex min-h-[min(100dvh,920px)] flex-col justify-center px-4 pb-8 pt-28 sm:px-6"
+          className={`relative flex min-h-[min(100dvh,920px)] flex-col justify-center ${pageGutterClass} pb-8 pt-28`}
           aria-labelledby="hero-title"
         >
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -277,7 +279,7 @@ export default function Home() {
             />
           </div>
 
-          <div className="relative mx-auto w-full max-w-6xl">
+          <div className={`relative mx-auto w-full ${pageMaxWidthClass}`}>
             <div className="grid items-center gap-12 lg:grid-cols-2">
               <div className="text-center lg:text-left">
                 <motion.div
@@ -340,7 +342,7 @@ export default function Home() {
           </div>
 
           <div className="flex flex-col items-center justify-center pt-10 pb-20 opacity-70">
-            <p className="mb-6 px-4 text-center text-sm font-semibold text-gray-300">
+            <p className="mb-6 px-2 text-center text-sm font-semibold text-gray-300 sm:px-4">
               Vos fonds sont sécurisés par des partenaires de confiance en RDC
             </p>
             <div className="flex w-full max-w-3xl flex-wrap items-center justify-center gap-x-3 gap-y-3 px-2 pt-20 sm:gap-x-6 sm:gap-y-4 md:gap-8">
@@ -381,7 +383,7 @@ export default function Home() {
           className="border-y border-white/10 bg-white/[0.03]"
           aria-labelledby="stats-heading"
         >
-          <div className="mx-auto grid max-w-6xl gap-12 px-4 py-20 sm:grid-cols-3 sm:gap-8 sm:px-6">
+          <div className={`mx-auto grid ${pageMaxWidthClass} ${pageGutterClass} gap-12 py-20 sm:grid-cols-3 sm:gap-8`}>
             <h2 id="stats-heading" className="sr-only">
               Indicateurs de confiance
             </h2>
@@ -410,8 +412,8 @@ export default function Home() {
         </section>
 
         {/* —— Features 2×2 —— */}
-        <section id="fonctionnalites" className="px-4 py-24 sm:px-6" aria-labelledby="features-heading">
-          <div className="mx-auto max-w-6xl">
+        <section id="fonctionnalites" className={`${pageGutterClass} py-24`} aria-labelledby="features-heading">
+          <div className={`mx-auto ${pageMaxWidthClass}`}>
             <motion.h2
               id="features-heading"
               className="mx-auto max-w-3xl text-center text-[clamp(1.75rem,4vw,2.5rem)] font-bold leading-tight tracking-tight text-white"
@@ -456,11 +458,11 @@ export default function Home() {
         {/* —— How it works —— */}
         <section
           id="etapes"
-          className="relative border-t border-white/10 px-4 py-24 sm:px-6"
+          className={`relative border-t border-white/10 ${pageGutterClass} py-24`}
           aria-labelledby="how-heading"
         >
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,hsl(var(--primary)/0.12),transparent)]" />
-          <div className="relative mx-auto max-w-6xl">
+          <div className={`relative mx-auto ${pageMaxWidthClass}`}>
             <motion.h2
               id="how-heading"
               className="mx-auto max-w-3xl text-center text-[clamp(1.75rem,4vw,2.35rem)] font-bold leading-tight tracking-tight text-white"
@@ -510,7 +512,7 @@ export default function Home() {
         {/* —— Final CTA —— */}
         <section
           id="cta-finale"
-          className="relative px-4 py-28 sm:px-6"
+          className={`relative ${pageGutterClass} py-28`}
           aria-labelledby="cta-heading"
         >
           <div className="pointer-events-none absolute inset-0">
@@ -549,7 +551,7 @@ export default function Home() {
       </main>
 
       <footer className="border-t border-white/10 bg-black/40 py-14 text-center backdrop-blur-sm">
-        <p className="mx-auto max-w-2xl px-4 text-sm leading-relaxed text-slate-400">
+        <p className={`mx-auto max-w-2xl ${pageGutterClass} text-sm leading-relaxed text-slate-400`}>
           {content.footer.description}
         </p>
         <p className="mt-3 text-xs text-slate-500">{content.footer.rights}</p>
@@ -645,7 +647,6 @@ function InteractiveChatDemo({ prefersReducedMotion }: { prefersReducedMotion: b
   const [visibleCount, setVisibleCount] = useState(0);
   const [typing, setTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const bottomAnchorRef = useRef<HTMLDivElement | null>(null);
   const messages = useMemo(
     () => (view === "vendeur" ? VENDEUR_CONVERSATION : ACHETEUR_CONVERSATION),
     [view],
@@ -696,21 +697,23 @@ function InteractiveChatDemo({ prefersReducedMotion }: { prefersReducedMotion: b
   }, [messages, prefersReducedMotion, view]);
 
   useLayoutEffect(() => {
-    if (!scrollRef.current) {
+    const scrollNode = scrollRef.current;
+    if (!scrollNode) {
       return;
     }
 
     const rafId = window.requestAnimationFrame(() => {
-      bottomAnchorRef.current?.scrollIntoView({
+      const targetTop = Math.max(scrollNode.scrollHeight - scrollNode.clientHeight, 0);
+      scrollNode.scrollTo({
+        top: targetTop,
         behavior: prefersReducedMotion ? "auto" : "smooth",
-        block: "end",
       });
     });
     return () => window.cancelAnimationFrame(rafId);
   }, [prefersReducedMotion, typing, view, visibleCount]);
 
   return (
-    <div className="mx-auto flex w-full max-w-[360px] flex-col items-center px-2 sm:px-0">
+    <div className="mx-auto flex w-full max-w-[360px] flex-col items-center">
       <div className="mb-5 inline-flex flex-wrap items-center justify-center rounded-full border border-white/10 bg-white/[0.04] p-1 backdrop-blur-md">
         <button
           type="button"
@@ -754,7 +757,7 @@ function InteractiveChatDemo({ prefersReducedMotion }: { prefersReducedMotion: b
 
         <div
           ref={scrollRef}
-          className="h-[420px] overflow-y-auto bg-[#0b141a] px-3 py-3 [scrollbar-color:#334155_transparent] [scrollbar-width:thin]"
+          className="h-[420px] overflow-y-auto overscroll-y-contain bg-[#0b141a] px-3 py-3 touch-pan-y [scrollbar-color:#334155_transparent] [scrollbar-width:thin]"
         >
           <motion.div key={view} className="space-y-2.5">
             {visibleMessages.map((message, index) => {
@@ -823,7 +826,6 @@ function InteractiveChatDemo({ prefersReducedMotion }: { prefersReducedMotion: b
                 </div>
               </motion.div>
             )}
-            <div ref={bottomAnchorRef} aria-hidden />
           </motion.div>
         </div>
       </div>
