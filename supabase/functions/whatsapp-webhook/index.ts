@@ -2121,8 +2121,9 @@ async function applyInteractiveAction(
   }
 
   if (message.intent === "SUBMIT_PIN") {
-    const stateMachineInvokeKey = Deno.env.get("SUPABASE_ANON_KEY") ??
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const stateMachineInvokeKey = Deno.env.get("STATE_MACHINE_INVOKE_KEY") ??
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
+      Deno.env.get("SUPABASE_ANON_KEY");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     if (!stateMachineInvokeKey || !supabaseUrl) {
       return {
@@ -2140,6 +2141,7 @@ async function applyInteractiveAction(
       response = await fetch(endpoint, {
         method: "POST",
         headers: {
+          apikey: stateMachineInvokeKey,
           Authorization: `Bearer ${stateMachineInvokeKey}`,
           "Content-Type": "application/json",
         },
@@ -2475,8 +2477,9 @@ async function triggerCreateTransaction(
   const messageTextForCreation = message.createTransactionMessageText ?? originalTextBody;
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const stateMachineInvokeKey = Deno.env.get("SUPABASE_ANON_KEY") ??
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const stateMachineInvokeKey = Deno.env.get("STATE_MACHINE_INVOKE_KEY") ??
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
+    Deno.env.get("SUPABASE_ANON_KEY");
   if (!supabaseUrl || !stateMachineInvokeKey) {
     const missingConfigMessage =
       "⚠️ Service temporairement indisponible.\n\nMerci de réessayer dans quelques instants.";
@@ -2512,6 +2515,7 @@ async function triggerCreateTransaction(
     response = await fetch(endpoint, {
       method: "POST",
       headers: {
+        apikey: stateMachineInvokeKey,
         Authorization: `Bearer ${stateMachineInvokeKey}`,
         "Content-Type": "application/json",
       },
