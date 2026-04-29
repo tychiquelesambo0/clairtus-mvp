@@ -1,22 +1,17 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Geist, Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
+import { Geist_Mono, Red_Hat_Display } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const redHatDisplay = Red_Hat_Display({
+  variable: "--font-red-hat-display",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
-});
-
-const fontHeading = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  variable: "--font-heading",
-  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -37,6 +32,11 @@ export const metadata: Metadata = {
     description:
       "Vendez et achetez en toute sécurité avec Mobile Money et notre bot WhatsApp.",
   },
+  icons: {
+    icon: "/favicon-clairtus.svg",
+    shortcut: "/favicon-clairtus.svg",
+    apple: "/favicon-clairtus.svg",
+  },
 };
 
 export default function RootLayout({
@@ -47,9 +47,9 @@ export default function RootLayout({
   return (
     <html
       lang="fr"
-      className={`${geistSans.variable} ${geistMono.variable} h-full scroll-smooth antialiased`}
+      className={`${redHatDisplay.variable} ${geistMono.variable} h-full scroll-smooth antialiased`}
     >
-      <body className={`min-h-full flex flex-col font-sans antialiased ${fontHeading.variable}`}>
+      <body className="min-h-full flex flex-col font-sans antialiased">
         {children}
       </body>
     </html>

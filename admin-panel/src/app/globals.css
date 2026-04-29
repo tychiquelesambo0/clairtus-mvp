@@ -19,7 +19,8 @@
   --color-muted: var(--muted);
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-red-hat-display);
+  --font-heading: var(--font-red-hat-display);
   --font-mono: var(--font-geist-mono);
 }
 
@@ -30,7 +31,7 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-red-hat-display), ui-sans-serif, system-ui, sans-serif;
 }
 
 @media (prefers-reduced-motion: reduce) {

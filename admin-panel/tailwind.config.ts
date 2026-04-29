@@ -5,8 +5,8 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
-        heading: ["var(--font-heading)", "system-ui", "sans-serif"],
+        sans: ["var(--font-red-hat-display)", "system-ui", "sans-serif"],
+        heading: ["var(--font-red-hat-display)", "system-ui", "sans-serif"],
       },
     },
   },
