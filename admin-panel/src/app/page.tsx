@@ -241,13 +241,13 @@ export default function Home() {
       </a>
 
       <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-[#020617]/80 backdrop-blur-xl">
-        <div className={`mx-auto flex h-16 ${pageMaxWidthClass} items-center justify-between ${pageGutterClass}`}>
+        <div className={`mx-auto flex h-16 ${pageMaxWidthClass} items-center justify-between px-0 sm:px-2 lg:px-4`}>
           <Image
             src="/logo-clairtus.svg"
             alt="Clairtus"
             width={140}
             height={28}
-            className="h-7 w-auto"
+            className="h-[42px] w-[110px]"
             priority
           />
           <a
@@ -721,7 +721,7 @@ function InteractiveChatDemo({ prefersReducedMotion }: { prefersReducedMotion: b
   }, [prefersReducedMotion, typing, view, visibleCount]);
 
   return (
-    <div className="ml-[77px] mr-[77px] flex w-full max-w-[360px] flex-col items-center justify-start">
+    <div className="mx-auto flex w-full max-w-[360px] flex-col items-center justify-start">
       <div className="mb-5 inline-flex flex-wrap items-center justify-center rounded-full border border-white/10 bg-white/[0.04] p-1 backdrop-blur-md">
         <button
           type="button"
