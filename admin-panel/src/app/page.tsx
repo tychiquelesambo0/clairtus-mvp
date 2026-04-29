@@ -241,7 +241,7 @@ export default function Home() {
       </a>
 
       <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-[#020617]/80 backdrop-blur-xl">
-        <div className={`mx-auto flex h-16 ${pageMaxWidthClass} items-center justify-between ${pageGutterClass}`}>
+        <div className={`mx-auto flex h-16 ${pageMaxWidthClass} items-center justify-between px-2`}>
           <Image
             src="/logo-clairtus.svg"
             alt="Clairtus"
