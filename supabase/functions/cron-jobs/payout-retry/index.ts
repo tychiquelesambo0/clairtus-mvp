@@ -1,4 +1,4 @@
-import { serve } from "@std/http/server";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { jsonResponse } from "../../_shared/http.ts";
 import { initiatePayoutForTransaction } from "../../_shared/payoutFlow.ts";
 import { createServiceRoleClient } from "../../_shared/supabaseClient.ts";
