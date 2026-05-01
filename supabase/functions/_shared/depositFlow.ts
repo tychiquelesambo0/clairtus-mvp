@@ -1,5 +1,11 @@
 import { callPawaPay } from "./pawapayClient.ts";
 import { createServiceRoleClient } from "./supabaseClient.ts";
+import {
+  buildPremiumEducationHint,
+  computeBuyerDebitAmount,
+  getEffectiveDepositLimits,
+  resolveDepositCorrespondent,
+} from "./transactionLimits.ts";
 import { sendWhatsAppTextMessage } from "./whatsappMessaging.ts";
 
 interface DepositApiResponse {
@@ -21,10 +27,6 @@ interface DepositCandidateRecord {
   currency: string;
 }
 
-function roundToCents(value: number): number {
-  return Math.round(value * 100) / 100;
-}
-
 function extractDepositId(response: DepositApiResponse | null): string | null {
   if (!response) {
     return null;
@@ -43,12 +45,6 @@ function extractCheckoutUrl(response: DepositApiResponse | null): string | null 
   return typeof candidate === "string" && candidate.trim().length > 0
     ? candidate.trim()
     : null;
-}
-
-function resolveDepositCorrespondent(): string {
-  return Deno.env.get("PAWAPAY_DEPOSIT_CORRESPONDENT") ??
-    Deno.env.get("PAWAPAY_CORRESPONDENT") ??
-    "MTN_MOMO_COD";
 }
 
 export async function initiateDepositForTransaction(
@@ -77,12 +73,19 @@ export async function initiateDepositForTransaction(
     throw new Error("Deposit initiation supports USD only.");
   }
 
-  const depositAmount = roundToCents(tx.base_amount + tx.mno_fee);
+  const depositAmount = computeBuyerDebitAmount(tx.base_amount, tx.mno_fee);
+  const correspondent = resolveDepositCorrespondent();
+  const depositLimits = getEffectiveDepositLimits(correspondent);
+  if (depositAmount > depositLimits.effectiveTotalDebitCapUsd) {
+    throw new Error(
+      `Deposit exceeds Mobile Money daily cap for ${correspondent}: debit ${depositAmount.toFixed(2)} USD > ${depositLimits.effectiveTotalDebitCapUsd.toFixed(2)} USD.`,
+    );
+  }
   const requestBody = {
     depositId: tx.id,
     amount: depositAmount.toFixed(2),
     currency: "USD",
-    correspondent: resolveDepositCorrespondent(),
+    correspondent,
     payer: {
       type: "MSISDN",
       address: {
@@ -121,14 +124,18 @@ export async function initiateDepositForTransaction(
 
   let buyerMessageSent = false;
   if (checkoutUrl) {
+    const premiumHint = buildPremiumEducationHint(tx.base_amount);
     const message = [
       "💳 Paiement requis",
       "",
       "Pour sécuriser vos fonds, ouvrez ce lien :",
       checkoutUrl,
       "",
+      `💡 Débit total estimé (montant + frais opérateur) : ${depositAmount.toFixed(2)} USD.`,
+      premiumHint,
+      "",
       "🔒 Clairtus protège votre paiement jusqu'à la confirmation de livraison.",
-    ].join("\n");
+    ].filter((line) => Boolean(line)).join("\n");
     const sendResult = await sendWhatsAppTextMessage({
       recipientPhoneE164: tx.buyer_phone,
       messageText: message,
@@ -141,6 +148,8 @@ export async function initiateDepositForTransaction(
     transaction_id: tx.id,
     idempotency_key: result.idempotencyKey,
     deposit_amount: depositAmount,
+    deposit_cap_usd: depositLimits.effectiveTotalDebitCapUsd,
+    deposit_correspondent: correspondent,
     pawapay_deposit_id: depositId,
     checkout_url: checkoutUrl,
     duplicate_detected: result.duplicateDetected,

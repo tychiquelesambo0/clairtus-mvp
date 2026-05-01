@@ -1,5 +1,6 @@
 import { callPawaPay } from "./pawapayClient.ts";
 import { createServiceRoleClient } from "./supabaseClient.ts";
+import { getEffectivePayoutCapUsd, resolvePayoutCorrespondent } from "./transactionLimits.ts";
 import {
   buildPayoutRetryButtons,
   sendInteractiveButtonsMessage,
@@ -67,12 +68,6 @@ function classifyPayoutError(
   return "NONE";
 }
 
-function resolvePayoutCorrespondent(): string {
-  return Deno.env.get("PAWAPAY_PAYOUT_CORRESPONDENT") ??
-    Deno.env.get("PAWAPAY_CORRESPONDENT") ??
-    "MTN_MOMO_COD";
-}
-
 async function transitionToStatus(
   transactionId: string,
   fromStatus: string,
@@ -134,12 +129,19 @@ export async function initiatePayoutForTransaction(
   if (payoutAmount <= 0) {
     throw new Error("Invalid payout amount after fee deduction.");
   }
+  const correspondent = resolvePayoutCorrespondent();
+  const payoutCapUsd = getEffectivePayoutCapUsd(correspondent);
+  if (payoutAmount > payoutCapUsd) {
+    throw new Error(
+      `Payout exceeds correspondent cap for ${correspondent}: payout ${payoutAmount.toFixed(2)} USD > ${payoutCapUsd.toFixed(2)} USD.`,
+    );
+  }
 
   const requestBody = {
     payoutId: tx.id,
     amount: payoutAmount.toFixed(2),
     currency: "USD",
-    correspondent: resolvePayoutCorrespondent(),
+    correspondent,
     recipient: {
       type: "MSISDN",
       address: {
@@ -183,7 +185,7 @@ export async function initiatePayoutForTransaction(
       const interactiveResult = await sendInteractiveButtonsMessage({
         recipientPhoneE164: tx.seller_phone,
         bodyText:
-          "⚠️ Votre compte Mobile Money a atteint sa limite.\n\nVidez votre compte puis appuyez sur « RÉESSAYER ».",
+          "⚠️ Le transfert n'a pas abouti car le compte Mobile Money semble proche de sa limite.\n\nLibérez le solde ou utilisez un compte adapté, puis appuyez sur « RÉESSAYER ».",
         buttons: buildPayoutRetryButtons(tx.id),
       });
       retryPromptSent = interactiveResult.sent;
@@ -213,6 +215,8 @@ export async function initiatePayoutForTransaction(
       initiated: false,
       idempotency_key: result.idempotencyKey,
       payout_amount: payoutAmount,
+      payout_cap_usd: payoutCapUsd,
+      payout_correspondent: correspondent,
       error_scenario: errorScenario,
       transitioned_to_status: transitionedToStatus,
       retry_prompt_sent: retryPromptSent,
@@ -239,6 +243,8 @@ export async function initiatePayoutForTransaction(
     initiated: true,
     idempotency_key: result.idempotencyKey,
     payout_amount: payoutAmount,
+    payout_cap_usd: payoutCapUsd,
+    payout_correspondent: correspondent,
     pawapay_payout_id: payoutId,
     duplicate_detected: result.duplicateDetected,
     error_scenario: errorScenario,

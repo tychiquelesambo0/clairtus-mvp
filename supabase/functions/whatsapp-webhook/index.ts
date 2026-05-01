@@ -8,6 +8,13 @@ import { normalizeDrPhoneToE164, PHONE_FORMAT_ERROR_MESSAGE } from "../_shared/p
 import { generateSecure4DigitPin } from "../_shared/pin.ts";
 import { initiatePayoutForTransaction } from "../_shared/payoutFlow.ts";
 import { createServiceRoleClient } from "../_shared/supabaseClient.ts";
+import {
+  buildAmountRangeErrorMessage,
+  buildPremiumEducationHint,
+  getEffectiveDepositLimits,
+  getMaxBaseAmountWithinDailyCap,
+  USD_MIN_BASE_AMOUNT,
+} from "../_shared/transactionLimits.ts";
 import { sendWhatsAppTextMessage } from "../_shared/whatsappMessaging.ts";
 import {
   buildPrePaymentManagementButtons,
@@ -382,11 +389,36 @@ function parseAmountFromInput(input: string): number | null {
   if (!/^[0-9]+(?:\.[0-9]{1,2})?$/.test(normalized)) {
     return null;
   }
+  const depositLimits = getEffectiveDepositLimits();
+  const maxBaseAmount = getMaxBaseAmountWithinDailyCap(
+    depositLimits.mnoFeeRate,
+    depositLimits.effectiveTotalDebitCapUsd,
+  );
   const value = Number.parseFloat(normalized);
-  if (!Number.isFinite(value) || value < 1 || value > 2500) {
+  if (
+    !Number.isFinite(value) ||
+    value < USD_MIN_BASE_AMOUNT ||
+    value > maxBaseAmount
+  ) {
     return null;
   }
   return Math.round(value * 100) / 100;
+}
+
+function buildDepositLimitRecoveryHint(rawErrorMessage: string | null): string | null {
+  if (!rawErrorMessage) {
+    return null;
+  }
+  const normalized = rawErrorMessage.toLowerCase();
+  if (
+    normalized.includes("limit") ||
+    normalized.includes("plafond") ||
+    normalized.includes("exceed") ||
+    normalized.includes("insufficient")
+  ) {
+    return "⚠️ Le paiement n'a pas pu être validé par l'opérateur (plafond ou solde). Vérifiez le compte Mobile Money puis utilisez RÉESSAYER.";
+  }
+  return null;
 }
 
 function buildTransactionReference(transactionId: string): string {
@@ -1398,6 +1430,11 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
           },
         };
       }
+      const guidedDepositLimits = getEffectiveDepositLimits();
+      const guidedMaxBaseAmount = getMaxBaseAmountWithinDailyCap(
+        guidedDepositLimits.mnoFeeRate,
+        guidedDepositLimits.effectiveTotalDebitCapUsd,
+      );
       return {
         senderPhoneE164: message.senderPhoneE164,
         messageType: message.messageType,
@@ -1407,8 +1444,8 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
         action: null,
         responseMessage:
           existingDraft.mode === "SELL"
-            ? "Super 👍\n\nQuel est le prix en $ ?\nRépondez uniquement avec un nombre.\nExemple : 900\n\n💡 Clairtus déduit 2,5% du montant total."
-            : "Super 👍\n\nQuel est le prix en $ ?\nRépondez uniquement avec un nombre.\nExemple : 900\n\n💡 En tant qu'acheteur, vous payez les frais Mobile Money opérateur.",
+            ? `Super 👍\n\nQuel est le prix en $ ?\nRépondez uniquement avec un nombre.\nExemple : 900\n\n💡 Montant autorisé : ${USD_MIN_BASE_AMOUNT} à ${guidedMaxBaseAmount.toFixed(2)} USD.\n💡 Clairtus déduit 2,5% du montant total.`
+            : `Super 👍\n\nQuel est le prix en $ ?\nRépondez uniquement avec un nombre.\nExemple : 900\n\n💡 Montant autorisé : ${USD_MIN_BASE_AMOUNT} à ${guidedMaxBaseAmount.toFixed(2)} USD.\n💡 En tant qu'acheteur, vous payez les frais Mobile Money opérateur.`,
         allowed: true,
         rateLimitRemaining: null,
         transitionApplied: false,
@@ -1422,6 +1459,7 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
     if (existingDraft.stage === "AWAITING_PRICE") {
       const amount = parseAmountFromInput(message.textBody);
       if (amount === null) {
+        const guidedDepositLimits = getEffectiveDepositLimits();
         return {
           senderPhoneE164: message.senderPhoneE164,
           messageType: message.messageType,
@@ -1430,7 +1468,10 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
           transactionId: null,
           action: null,
           responseMessage:
-            "Montant invalide.\n\nEnvoyez uniquement le prix en chiffres (de 1 à 2500).\nExemple : 900\n\nSi vous aviez interrompu la saisie, dites MENU pour recommencer.",
+            `${buildAmountRangeErrorMessage({
+              mnoFeeRate: guidedDepositLimits.mnoFeeRate,
+              totalDebitCapUsd: guidedDepositLimits.effectiveTotalDebitCapUsd,
+            })}\n\nExemple : 900\n\nSi vous aviez interrompu la saisie, dites MENU pour recommencer.`,
           allowed: false,
           rateLimitRemaining: null,
           transitionApplied: false,
@@ -1470,6 +1511,7 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
       const whoLabel = existingDraft.mode === "SELL"
         ? "numéro de l'acheteur"
         : "numéro du vendeur";
+      const amountHint = buildPremiumEducationHint(amount);
       return {
         senderPhoneE164: message.senderPhoneE164,
         messageType: message.messageType,
@@ -1478,7 +1520,16 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
         transactionId: null,
         action: null,
         responseMessage:
-          `Parfait.\n\nEnvoyez maintenant le ${whoLabel} en format international.\nExemple : +243...\n\nLe numéro doit appartenir à la contrepartie et être valide pour Mobile Money.\nOpérateurs supportés : M-Pesa, Orange Money, Airtel Money.`,
+          [
+            "Parfait.",
+            "",
+            `Envoyez maintenant le ${whoLabel} en format international.`,
+            "Exemple : +243...",
+            "",
+            amountHint,
+            "Le numéro doit appartenir à la contrepartie et être valide pour Mobile Money.",
+            "Opérateurs supportés : M-Pesa, Orange Money, Airtel Money.",
+          ].filter((line) => Boolean(line)).join("\n"),
         allowed: true,
         rateLimitRemaining: null,
         transitionApplied: false,
@@ -2388,6 +2439,8 @@ async function applyInteractiveAction(
       : null;
     const autoBypass = depositInitiation?.payment_mode === "AUTO_BYPASS";
     const buyerMessageSentByDepositFlow = depositInitiation?.buyer_message_sent === true;
+    const premiumHint = buildPremiumEducationHint(transactionRow.base_amount);
+    const depositLimitHint = buildDepositLimitRecoveryHint(depositInitiationErrorMessage);
 
     if (autoBypass) {
       buyerFollowupSent = depositInitiation?.buyer_message_sent === true;
@@ -2396,8 +2449,8 @@ async function applyInteractiveAction(
       const buyerFollowup = await sendWhatsAppTextMessage({
         recipientPhoneE164: transactionRow.buyer_phone,
         transactionId: transactionRow.id,
-        messageText:
-          "⚠️ Paiement indisponible pour le moment sur ce numéro / cette configuration.\n\nContactez l'assistance Clairtus pour activer un pays ou fournisseur compatible.",
+        messageText: depositLimitHint ??
+          "⚠️ Paiement indisponible pour le moment sur ce numéro / cette configuration.\n\nContactez l'assistance Clairtus pour vérification.",
       });
       buyerFollowupSent = buyerFollowup.sent;
     } else if (!buyerMessageSentByDepositFlow) {
@@ -2406,8 +2459,23 @@ async function applyInteractiveAction(
         recipientPhoneE164: transactionRow.buyer_phone,
         transactionId: transactionRow.id,
         messageText: checkoutUrl
-          ? `✅ Confirmation enregistrée.\n\nOuvrez ce lien pour sécuriser le paiement :\n${checkoutUrl}\n\n💡 Les frais Mobile Money opérateur restent à la charge de l'acheteur.`
-          : "✅ Confirmation enregistrée.\n\nValidez maintenant la demande Mobile Money sur votre téléphone.\n\n💡 Les frais Mobile Money opérateur restent à la charge de l'acheteur.",
+          ? [
+            "✅ Confirmation enregistrée.",
+            "",
+            "Ouvrez ce lien pour sécuriser le paiement :",
+            checkoutUrl,
+            "",
+            "💡 Les frais Mobile Money opérateur restent à la charge de l'acheteur.",
+            premiumHint,
+          ].filter((line) => Boolean(line)).join("\n")
+          : [
+            "✅ Confirmation enregistrée.",
+            "",
+            "Validez maintenant la demande Mobile Money sur votre téléphone.",
+            "",
+            "💡 Les frais Mobile Money opérateur restent à la charge de l'acheteur.",
+            premiumHint,
+          ].filter((line) => Boolean(line)).join("\n"),
       });
       buyerFollowupSent = buyerFollowup.sent;
     } else {
@@ -2420,8 +2488,14 @@ async function applyInteractiveAction(
       messageText: autoBypass
         ? "✅ Mode test activé.\n\nLe paiement est marqué comme réussi automatiquement.\nVous pouvez continuer avec le code PIN."
         : depositInitiationErrorMessage
-        ? "⚠️ La contrepartie a accepté, mais l'initiation du paiement a échoué.\n\nVérifiez la configuration pawaPay / pays."
-        : "✅ La contrepartie a accepté.\n\nNous attendons maintenant la confirmation du paiement Mobile Money.",
+        ? (depositLimitHint ??
+          "⚠️ La contrepartie a accepté, mais l'initiation du paiement a échoué.\n\nRéessayez ou contactez l'assistance.")
+        : [
+          "✅ La contrepartie a accepté.",
+          "",
+          "Nous attendons maintenant la confirmation du paiement Mobile Money.",
+          premiumHint,
+        ].filter((line) => Boolean(line)).join("\n"),
     });
     sellerFollowupSent = autoBypass ? sellerFollowupSent : sellerFollowup.sent;
 
@@ -2470,7 +2544,8 @@ async function applyInteractiveAction(
       ? (depositInitiation?.payment_mode === "AUTO_BYPASS"
         ? "✅ Action ACCEPTER appliquée.\n\nPaiement marqué comme réussi automatiquement (mode test).\nTransaction sécurisée."
         : depositInitiationErrorMessage
-        ? "⚠️ Action ACCEPTER appliquée, mais l'initiation du paiement a échoué.\n\nContactez l'assistance pour activer un fournisseur/pays compatible."
+        ? (buildDepositLimitRecoveryHint(depositInitiationErrorMessage) ??
+          "⚠️ Action ACCEPTER appliquée, mais l'initiation du paiement a échoué.\n\nRéessayez ou contactez l'assistance.")
         : "✅ Action ACCEPTER appliquée.\n\nTransaction en attente de financement.")
       : "✅ Action REFUSER appliquée.\n\nTransaction annulée.",
   };

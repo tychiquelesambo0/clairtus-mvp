@@ -19,6 +19,16 @@ import { initiateRefundForTransaction } from "../_shared/refundFlow.ts";
 import { createServiceRoleClient } from "../_shared/supabaseClient.ts";
 import { getTrustScoresForParties } from "../_shared/trustScore.ts";
 import {
+  buildAmountRangeErrorMessage,
+  buildPremiumEducationHint,
+  computeBuyerDebitAmount,
+  computeMnoFeeFromBaseAmount,
+  getEffectiveDepositLimits,
+  getMaxBaseAmountWithinDailyCap,
+  resolveDepositCorrespondent,
+  USD_MIN_BASE_AMOUNT,
+} from "../_shared/transactionLimits.ts";
+import {
   sendWhatsAppTemplateMessage,
   sendWhatsAppTextMessage,
 } from "../_shared/whatsappMessaging.ts";
@@ -302,8 +312,20 @@ function parseTransactionCreationMessage(
   const counterpartyRawPhone = match[5].trim();
 
   const baseAmount = Number.parseFloat(amountRaw);
-  if (!Number.isFinite(baseAmount) || baseAmount < 1 || baseAmount > 2500) {
-    throw new Error("Montant invalide.\n\nLe montant doit être compris entre 1 et 2500 USD.");
+  const depositLimits = getEffectiveDepositLimits();
+  const maxBaseAmount = getMaxBaseAmountWithinDailyCap(
+    depositLimits.mnoFeeRate,
+    depositLimits.effectiveTotalDebitCapUsd,
+  );
+  if (
+    !Number.isFinite(baseAmount) ||
+    baseAmount < USD_MIN_BASE_AMOUNT ||
+    baseAmount > maxBaseAmount
+  ) {
+    throw new Error(buildAmountRangeErrorMessage({
+      mnoFeeRate: depositLimits.mnoFeeRate,
+      totalDebitCapUsd: depositLimits.effectiveTotalDebitCapUsd,
+    }));
   }
 
   if (currency !== "USD") {
@@ -376,8 +398,26 @@ async function createTransactionFromMessage(
 
   const parsed = parseTransactionCreationMessage(input.senderPhone, input.messageText);
   const initiatorPhone = normalizeDrPhoneToE164OrThrow(input.senderPhone);
-  const mnoFee = roundToCents(parsed.amount * 0.015);
+  const depositCorrespondent = resolveDepositCorrespondent();
+  const depositLimits = getEffectiveDepositLimits(depositCorrespondent);
+  const mnoFee = computeMnoFeeFromBaseAmount(parsed.amount, depositLimits.mnoFeeRate);
   const clairtusFee = roundToCents(parsed.amount * 0.025);
+  const buyerDebitAmount = computeBuyerDebitAmount(parsed.amount, mnoFee);
+  if (buyerDebitAmount > depositLimits.effectiveTotalDebitCapUsd) {
+    const premiumHint = buildPremiumEducationHint(parsed.amount);
+    throw new Error(
+      [
+        `Ce montant dépasse le plafond journalier Mobile Money (${depositLimits.effectiveTotalDebitCapUsd.toFixed(2)} USD, frais inclus).`,
+        "",
+        `Montant saisi : ${parsed.amount.toFixed(2)} USD`,
+        `Frais opérateur estimés : ${mnoFee.toFixed(2)} USD`,
+        `Total à débiter : ${buyerDebitAmount.toFixed(2)} USD`,
+        `Canal opérateur : ${depositCorrespondent}`,
+        "",
+        premiumHint ?? "Réduisez légèrement le montant et réessayez.",
+      ].join("\n"),
+    );
+  }
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
   await ensureUserExists(parsed.sellerPhone);
