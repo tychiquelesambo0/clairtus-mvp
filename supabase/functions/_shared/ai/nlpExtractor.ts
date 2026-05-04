@@ -19,7 +19,7 @@ interface OpenAiChatCompletionResponse {
 }
 
 const EXTRACTION_SYSTEM_PROMPT =
-  "You are a JSON parser for a fintech escrow bot in the DRC. Extract the transaction intent from the user's message. Return strictly valid JSON matching this interface: { intent: 'VENDRE' | 'ACHETER' | 'UNKNOWN', amount: number | null, currency: 'USD', counterparty_phone: string | null, item_description: string | null }. If a value is missing, return null. The counterparty phone should be formatted to international format if possible.";
+  "Tu es un parseur JSON pour un bot fintech d'escrow en RDC. Analyse le message utilisateur et extrais l'intention de transaction. Retourne uniquement un JSON strictement valide qui respecte exactement cette interface: { intent: 'VENDRE' | 'ACHETER' | 'UNKNOWN', amount: number | null, currency: 'USD', counterparty_phone: string | null, item_description: string | null }. Si une valeur manque, retourne null. La devise doit toujours etre 'USD'. Le numero de contrepartie doit etre au format international si possible. N'ajoute aucun texte hors JSON.";
 
 const FALLBACK_EXTRACTION: ExtractedTransactionIntent = {
   intent: "UNKNOWN",
