@@ -2,6 +2,10 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import {
   isUserSuspended,
 } from "../_shared/abusePrevention.ts";
+import {
+  extractTransactionIntent,
+  type ExtractedTransactionIntent,
+} from "../_shared/ai/nlpExtractor.ts";
 import { initiateDepositForTransaction } from "../_shared/depositFlow.ts";
 import { jsonResponse } from "../_shared/http.ts";
 import { normalizeDrPhoneToE164, PHONE_FORMAT_ERROR_MESSAGE } from "../_shared/phone.ts";
@@ -91,6 +95,8 @@ type RoutedIntent =
   | "RETRY_PAYOUT"
   | "HUMAN_SUPPORT"
   | "SUBMIT_PIN"
+  | "AI_CONFIRM_YES"
+  | "AI_CONFIRM_NO"
   | "UNKNOWN";
 
 interface RoutedMessage {
@@ -107,6 +113,7 @@ interface RoutedMessage {
   transitionDetails: Record<string, unknown> | null;
   responseDispatched?: boolean;
   createTransactionMessageText?: string;
+  createTransactionAiPrefill?: ExtractedTransactionIntent;
   transactionReference?: string | null;
 }
 
@@ -160,6 +167,13 @@ interface UserTransactionRow {
 interface StateMachineCreateTransactionResponse {
   ok?: boolean;
   error?: string;
+  confirmation?: {
+    confirmation_required?: boolean;
+    confirmation_dispatch?: {
+      sent?: boolean;
+      response_status?: number;
+    };
+  };
   transaction?: {
     transaction?: {
       id?: string;
@@ -898,6 +912,26 @@ function detectIntent(message: ParsedIncomingMessage): {
   action: TransactionButtonAction | PayoutButtonAction | null;
   reference: string | null;
 } {
+  const aiConfirmationPayload = message.buttonPayload?.trim() ?? "";
+  if (aiConfirmationPayload === "AI_CONFIRM|YES") {
+    return {
+      intent: "AI_CONFIRM_YES",
+      normalizedInput: aiConfirmationPayload,
+      transactionId: null,
+      action: null,
+      reference: null,
+    };
+  }
+  if (aiConfirmationPayload === "AI_CONFIRM|NO") {
+    return {
+      intent: "AI_CONFIRM_NO",
+      normalizedInput: aiConfirmationPayload,
+      transactionId: null,
+      action: null,
+      reference: null,
+    };
+  }
+
   const parsedPayoutPayload = parsePayoutButtonPayload(message.buttonPayload);
   if (parsedPayoutPayload) {
     return {
@@ -1608,6 +1642,59 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
     }
   }
 
+  const aiEligibleIdleText = message.messageType === "text" && message.textBody.trim().length > 15;
+  if (aiEligibleIdleText) {
+    const activeTx = await getLatestActiveTransactionForUser(message.senderPhoneE164);
+    if (!activeTx) {
+      const extracted = await extractTransactionIntent(message.textBody);
+      if (extracted.intent === "UNKNOWN") {
+        const fullName = `${identity.firstName ?? ""} ${identity.lastName ?? ""}`.trim();
+        const menuSent = await sendGuidedEntryButtons(message.senderPhoneE164, fullName || undefined);
+        return {
+          senderPhoneE164: message.senderPhoneE164,
+          messageType: message.messageType,
+          intent: "GUIDED_START",
+          normalizedInput: normalizedText,
+          transactionId: null,
+          action: null,
+          responseMessage: menuSent
+            ? "Je n'ai pas compris votre demande.\n\nChoisissez VENDRE ou ACHETER pour continuer."
+            : "Je n'ai pas compris votre demande.\n\nRépondez VENDRE ou ACHETER pour continuer.",
+          allowed: true,
+          rateLimitRemaining: null,
+          transitionApplied: false,
+          transitionDetails: {
+            ai_extraction_attempted: true,
+            ai_intent: "UNKNOWN",
+            guided_menu_dispatched: menuSent,
+          },
+          responseDispatched: true,
+        };
+      }
+
+      return {
+        senderPhoneE164: message.senderPhoneE164,
+        messageType: message.messageType,
+        intent: "CREATE_TRANSACTION",
+        normalizedInput: normalizeForRouting(extracted.intent),
+        transactionId: null,
+        action: null,
+        responseMessage:
+          "✅ Demande analysée.\n\nJe prépare une confirmation de contrat avant création.",
+        allowed: true,
+        rateLimitRemaining: null,
+        transitionApplied: false,
+        transitionDetails: {
+          ai_extraction_attempted: true,
+          ai_prefill_intent: extracted.intent,
+          ai_prefill_amount: extracted.amount,
+          ai_prefill_counterparty_phone: extracted.counterparty_phone,
+        },
+        createTransactionAiPrefill: extracted,
+      };
+    }
+  }
+
   if (isFrenchGreeting(message.textBody)) {
     const fullName = `${identity.firstName ?? ""} ${identity.lastName ?? ""}`.trim();
     const menuSent = await sendGuidedEntryButtons(message.senderPhoneE164, fullName || undefined);
@@ -1722,6 +1809,30 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
     return {
       ...base,
       responseMessage: "🔐 Code PIN reçu.\n\nVérification en cours.",
+      allowed: true,
+      rateLimitRemaining: null,
+      transitionApplied: false,
+      transitionDetails: null,
+    };
+  }
+
+  if (intentResult.intent === "AI_CONFIRM_YES") {
+    return {
+      ...base,
+      responseMessage:
+        "✅ Confirmation reçue.\n\nCréation du contrat de sécurité en cours.",
+      allowed: true,
+      rateLimitRemaining: null,
+      transitionApplied: false,
+      transitionDetails: null,
+    };
+  }
+
+  if (intentResult.intent === "AI_CONFIRM_NO") {
+    return {
+      ...base,
+      responseMessage:
+        "❎ D'accord, contrat annulé.\n\nChoisissez VENDRE ou ACHETER pour recommencer.",
       allowed: true,
       rateLimitRemaining: null,
       transitionApplied: false,
@@ -2555,10 +2666,15 @@ async function triggerCreateTransaction(
   message: RoutedMessage,
   originalTextBody: string,
 ): Promise<RoutedMessage> {
-  if (message.intent !== "CREATE_TRANSACTION" || !message.allowed) {
+  if (
+    (
+      message.intent !== "CREATE_TRANSACTION" &&
+      message.intent !== "AI_CONFIRM_YES" &&
+      message.intent !== "AI_CONFIRM_NO"
+    ) || !message.allowed
+  ) {
     return message;
   }
-  const messageTextForCreation = message.createTransactionMessageText ?? originalTextBody;
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const stateMachineInvokeKey = Deno.env.get("STATE_MACHINE_INVOKE_KEY") ??
@@ -2588,11 +2704,29 @@ async function triggerCreateTransaction(
   }
 
   const endpoint = `${supabaseUrl}/functions/v1/state-machine`;
-  const payload = {
-    action: "create_transaction",
-    sender_phone: message.senderPhoneE164,
-    message_text: messageTextForCreation,
-  };
+  const messageTextForCreation = message.createTransactionMessageText ?? originalTextBody;
+  const payload: Record<string, unknown> = message.intent === "AI_CONFIRM_YES"
+    ? {
+      action: "confirm_ai_transaction",
+      sender_phone: message.senderPhoneE164,
+    }
+    : message.intent === "AI_CONFIRM_NO"
+    ? {
+      action: "cancel_ai_transaction",
+      sender_phone: message.senderPhoneE164,
+    }
+    : message.createTransactionAiPrefill
+    ? {
+      action: "create_transaction",
+      sender_phone: message.senderPhoneE164,
+      ai_raw_text: originalTextBody,
+      ai_prefill: message.createTransactionAiPrefill,
+    }
+    : {
+      action: "create_transaction",
+      sender_phone: message.senderPhoneE164,
+      message_text: messageTextForCreation,
+    };
 
   let response: Response;
   try {
@@ -2679,6 +2813,47 @@ async function triggerCreateTransaction(
         sender_ack_status: senderAck.status,
       },
       responseDispatched: true,
+    };
+  }
+
+  if (message.intent === "AI_CONFIRM_NO") {
+    const fullName = await (async () => {
+      const identity = await getUserIdentity(message.senderPhoneE164);
+      return `${identity.firstName ?? ""} ${identity.lastName ?? ""}`.trim() || undefined;
+    })();
+    const menuSent = await sendGuidedEntryButtons(message.senderPhoneE164, fullName);
+    return {
+      ...message,
+      transitionApplied: true,
+      transitionDetails: {
+        component: "whatsapp-webhook",
+        step: "cancel_ai_transaction",
+        sender_phone: message.senderPhoneE164,
+        guided_menu_dispatched: menuSent,
+      },
+      responseMessage: menuSent
+        ? "❎ Contrat annulé.\n\nVous pouvez lancer une nouvelle transaction."
+        : message.responseMessage,
+      responseDispatched: menuSent,
+    };
+  }
+
+  if (parsedBody.confirmation?.confirmation_required === true) {
+    return {
+      ...message,
+      transitionApplied: true,
+      transitionDetails: {
+        component: "whatsapp-webhook",
+        step: "ai_prefill_confirmation_sent",
+        confirmation_dispatch_sent: parsedBody.confirmation.confirmation_dispatch?.sent ?? null,
+        confirmation_dispatch_status: parsedBody.confirmation.confirmation_dispatch?.response_status ?? null,
+      },
+      responseMessage:
+        parsedBody.confirmation.confirmation_dispatch?.sent === true
+          ? "✅ Détails détectés. Confirmez avec le bouton Oui pour créer le contrat."
+          : "⚠️ Détails détectés, mais l'envoi des boutons de confirmation a échoué. Réessayez.",
+      responseDispatched: parsedBody.confirmation.confirmation_dispatch?.sent === true,
+      allowed: parsedBody.confirmation.confirmation_dispatch?.sent === true,
     };
   }
 
