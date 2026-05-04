@@ -783,7 +783,7 @@ async function createTransactionFromMessage(
     await supabase.from("error_logs").insert({
       transaction_id: insertedTransaction.id,
       error_type: "WHATSAPP_INTERACTIVE_SEND_FAILED",
-      error_message: error instanceof Error ? error.message : "Unknown error",
+      error_message: error instanceof Error ? error.message : "Erreur inconnue",
       error_details: {
         component: "state-machine",
         transaction_id: insertedTransaction.id,
@@ -792,7 +792,7 @@ async function createTransactionFromMessage(
     interactiveDispatch = {
       sent: false,
       response_status: null,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: error instanceof Error ? error.message : "Erreur inconnue",
     };
   }
 
@@ -854,7 +854,7 @@ function getNextStatus(
   const nextStatus = TRANSITION_MATRIX[currentStatus][event];
   if (!nextStatus) {
     throw new Error(
-      `Invalid transition: ${currentStatus} -> (${event}) is not allowed`,
+      `Transition invalide : ${currentStatus} -> (${event}) n'est pas autorisee`,
     );
   }
   return nextStatus;
@@ -1095,7 +1095,7 @@ async function validateSubmittedPin(
 serve(async (request: Request): Promise<Response> => {
   try {
     if (request.method !== "POST") {
-      return jsonResponse({ error: "Method not allowed" }, 405);
+      return jsonResponse({ error: "Methode non autorisee" }, 405);
     }
 
     const body = (await request.json()) as RequestBody;
@@ -1103,7 +1103,7 @@ serve(async (request: Request): Promise<Response> => {
     if (body.action === "create_transaction") {
       if (!body.sender_phone) {
         return jsonResponse(
-          { error: "sender_phone is required" },
+          { error: "sender_phone est requis" },
           400,
         );
       }
@@ -1111,7 +1111,7 @@ serve(async (request: Request): Promise<Response> => {
       if (body.ai_prefill) {
         if (!body.ai_raw_text?.trim()) {
           return jsonResponse(
-            { error: "ai_raw_text is required when ai_prefill is provided" },
+            { error: "ai_raw_text est requis quand ai_prefill est fourni" },
             400,
           );
         }
@@ -1129,7 +1129,7 @@ serve(async (request: Request): Promise<Response> => {
 
       if (!body.message_text) {
         return jsonResponse(
-          { error: "message_text is required when ai_prefill is not provided" },
+          { error: "message_text est requis quand ai_prefill n'est pas fourni" },
           400,
         );
       }
@@ -1148,7 +1148,7 @@ serve(async (request: Request): Promise<Response> => {
     if (body.action === "confirm_ai_transaction") {
       if (!body.sender_phone) {
         return jsonResponse(
-          { error: "sender_phone is required" },
+          { error: "sender_phone est requis" },
           400,
         );
       }
@@ -1191,7 +1191,7 @@ serve(async (request: Request): Promise<Response> => {
     if (body.action === "cancel_ai_transaction") {
       if (!body.sender_phone) {
         return jsonResponse(
-          { error: "sender_phone is required" },
+          { error: "sender_phone est requis" },
           400,
         );
       }
@@ -1214,7 +1214,7 @@ serve(async (request: Request): Promise<Response> => {
     if (body.action === "transition_status") {
       if (!body.transaction_id || !body.event) {
         return jsonResponse(
-          { error: "transaction_id and event are required" },
+          { error: "transaction_id et event sont requis" },
           400,
         );
       }
@@ -1235,7 +1235,7 @@ serve(async (request: Request): Promise<Response> => {
 
     if (body.action === "initiate_deposit") {
       if (!body.transaction_id) {
-        return jsonResponse({ error: "transaction_id is required" }, 400);
+        return jsonResponse({ error: "transaction_id est requis" }, 400);
       }
       const result = await initiateDepositForTransaction(body.transaction_id);
       return jsonResponse({
@@ -1247,7 +1247,7 @@ serve(async (request: Request): Promise<Response> => {
 
     if (body.action === "generate_pin") {
       if (!body.transaction_id) {
-        return jsonResponse({ error: "transaction_id is required" }, 400);
+        return jsonResponse({ error: "transaction_id est requis" }, 400);
       }
 
       const result = await generatePinForSecuredTransaction(body.transaction_id);
@@ -1261,7 +1261,7 @@ serve(async (request: Request): Promise<Response> => {
     if (body.action === "validate_pin") {
       if (!body.transaction_id || !body.submitted_pin) {
         return jsonResponse(
-          { error: "transaction_id and submitted_pin are required" },
+          { error: "transaction_id et submitted_pin sont requis" },
           400,
         );
       }
@@ -1290,7 +1290,7 @@ serve(async (request: Request): Promise<Response> => {
 
     if (body.action === "initiate_payout") {
       if (!body.transaction_id) {
-        return jsonResponse({ error: "transaction_id is required" }, 400);
+        return jsonResponse({ error: "transaction_id est requis" }, 400);
       }
 
       const result = await initiatePayoutForTransaction(body.transaction_id);
@@ -1304,7 +1304,7 @@ serve(async (request: Request): Promise<Response> => {
     if (body.action === "initiate_refund") {
       if (!body.transaction_id || !body.refund_reason) {
         return jsonResponse(
-          { error: "transaction_id and refund_reason are required" },
+          { error: "transaction_id et refund_reason sont requis" },
           400,
         );
       }
@@ -1322,7 +1322,7 @@ serve(async (request: Request): Promise<Response> => {
     if (body.action === "set_user_suspension") {
       if (!body.target_phone || typeof body.suspended !== "boolean") {
         return jsonResponse(
-          { error: "target_phone and suspended(boolean) are required" },
+          { error: "target_phone et suspended(boolean) sont requis" },
           400,
         );
       }
@@ -1338,7 +1338,7 @@ serve(async (request: Request): Promise<Response> => {
     if (body.action === "set_requires_human") {
       if (!body.transaction_id || typeof body.requires_human !== "boolean") {
         return jsonResponse(
-          { error: "transaction_id and requires_human(boolean) are required" },
+          { error: "transaction_id et requires_human(boolean) sont requis" },
           400,
         );
       }
@@ -1381,7 +1381,7 @@ serve(async (request: Request): Promise<Response> => {
     return jsonResponse(
       {
         error:
-          "Invalid action. Use create_transaction, confirm_ai_transaction, cancel_ai_transaction, transition_status, initiate_deposit, initiate_payout, initiate_refund, generate_pin, validate_pin, set_user_suspension, or set_requires_human.",
+          "Action invalide. Utilisez create_transaction, confirm_ai_transaction, cancel_ai_transaction, transition_status, initiate_deposit, initiate_payout, initiate_refund, generate_pin, validate_pin, set_user_suspension ou set_requires_human.",
       },
       400,
     );
@@ -1390,7 +1390,7 @@ serve(async (request: Request): Promise<Response> => {
       {
         ok: false,
         function: "state-machine",
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: error instanceof Error ? error.message : "Erreur inconnue",
       },
       500,
     );
