@@ -773,6 +773,7 @@ async function createTransactionFromMessage(
       recipientPhoneE164: counterpartyForPrompt,
       bodyText: interactiveBodyText,
       buttons: buildInitiatedTransactionButtons(insertedTransaction.id),
+      transactionId: insertedTransaction.id,
     });
     interactiveDispatch = {
       sent: sendResult.sent,

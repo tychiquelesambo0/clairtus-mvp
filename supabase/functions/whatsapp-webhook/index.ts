@@ -19,7 +19,11 @@ import {
   getMaxBaseAmountWithinDailyCap,
   USD_MIN_BASE_AMOUNT,
 } from "../_shared/transactionLimits.ts";
-import { sendWhatsAppTextMessage } from "../_shared/whatsappMessaging.ts";
+import {
+  sendWhatsAppTemplateMessage,
+  sendWhatsAppTextMessage,
+} from "../_shared/whatsappMessaging.ts";
+import { updateWhatsAppDeliveryStatus } from "../_shared/whatsappDeliveryLog.ts";
 import {
   buildPrePaymentManagementButtons,
   parsePayoutButtonPayload,
@@ -59,11 +63,26 @@ interface MetaButtonMessage {
 
 type MetaIncomingMessage = MetaTextMessage | MetaInteractiveMessage | MetaButtonMessage;
 
+interface MetaStatusError {
+  code?: number;
+  title?: string;
+  message?: string;
+}
+
+interface MetaIncomingStatus {
+  id?: string;
+  status?: string;
+  timestamp?: string;
+  recipient_id?: string;
+  errors?: MetaStatusError[];
+}
+
 interface MetaWebhookPayload {
   entry?: Array<{
     changes?: Array<{
       value?: {
         messages?: MetaIncomingMessage[];
+        statuses?: MetaIncomingStatus[];
       };
     }>;
   }>;
@@ -93,6 +112,7 @@ type RoutedIntent =
   | "BUTTON_ACCEPT"
   | "BUTTON_REJECT"
   | "RETRY_PAYOUT"
+  | "RELAUNCH_COUNTERPARTY"
   | "HUMAN_SUPPORT"
   | "SUBMIT_PIN"
   | "AI_CONFIRM_YES"
@@ -343,6 +363,145 @@ function parseIncomingMessages(payload: MetaWebhookPayload): {
   return { parsedMessages, rejectedMessages };
 }
 
+async function processIncomingStatuses(payload: MetaWebhookPayload): Promise<number> {
+  let processedCount = 0;
+  for (const entry of payload.entry ?? []) {
+    for (const change of entry.changes ?? []) {
+      for (const status of change.value?.statuses ?? []) {
+        const messageId = status.id?.trim();
+        const deliveryStatus = status.status?.trim();
+        if (!messageId || !deliveryStatus) {
+          continue;
+        }
+        processedCount += 1;
+        await updateWhatsAppDeliveryStatus({
+          whatsappMessageId: messageId,
+          status: deliveryStatus,
+          statusPayload: {
+            recipient_id: status.recipient_id ?? null,
+            timestamp: status.timestamp ?? null,
+            errors: status.errors ?? null,
+          },
+        });
+        if (deliveryStatus.toUpperCase() === "FAILED") {
+          await maybeAutoRelaunchCounterpartyNotification(messageId);
+        }
+      }
+    }
+  }
+  return processedCount;
+}
+
+async function maybeAutoRelaunchCounterpartyNotification(
+  failedWhatsappMessageId: string,
+): Promise<void> {
+  const supabase = createServiceRoleClient();
+  const { data: failedLog } = await supabase
+    .from("messages_log")
+    .select("transaction_id, recipient_phone, sent_by, message_text")
+    .eq("whatsapp_message_id", failedWhatsappMessageId)
+    .maybeSingle();
+  if (!failedLog) {
+    return;
+  }
+
+  const logRow = failedLog as {
+    transaction_id: string | null;
+    recipient_phone: string;
+    sent_by: string;
+    message_text: string;
+  };
+  if (!logRow.transaction_id) {
+    return;
+  }
+
+  // Relaunch only for initial counterparty notification attempts.
+  const isCounterpartyNotifyShape = logRow.sent_by === "WHATSAPP_TEMPLATE" ||
+    logRow.sent_by === "WHATSAPP_INTERACTIVE" ||
+    (
+      logRow.sent_by === "WHATSAPP_TEXT" &&
+      (logRow.message_text.startsWith("🛡️ Clairtus | Nouvelle transaction") ||
+        logRow.message_text.startsWith("🔔 Rappel Clairtus"))
+    );
+  if (!isCounterpartyNotifyShape) {
+    return;
+  }
+
+  const { data: tx } = await supabase
+    .from("transactions")
+    .select("id, status, seller_phone, buyer_phone")
+    .eq("id", logRow.transaction_id)
+    .maybeSingle();
+  if (!tx) {
+    return;
+  }
+
+  const txRow = tx as {
+    id: string;
+    status: string;
+    seller_phone: string;
+    buyer_phone: string;
+  };
+  if (!["INITIATED", "PENDING_FUNDING"].includes(txRow.status)) {
+    return;
+  }
+  if (
+    logRow.recipient_phone !== txRow.buyer_phone &&
+    logRow.recipient_phone !== txRow.seller_phone
+  ) {
+    return;
+  }
+
+  // Cap retries to avoid loops on permanently unreachable recipients.
+  const { count: templateAttemptCount } = await supabase
+    .from("messages_log")
+    .select("id", { count: "exact", head: true })
+    .eq("transaction_id", txRow.id)
+    .eq("recipient_phone", logRow.recipient_phone)
+    .eq("sent_by", "WHATSAPP_TEMPLATE");
+  if ((templateAttemptCount ?? 0) >= 3) {
+    return;
+  }
+
+  const templateName = Deno.env.get("WHATSAPP_TRANSACTION_ALERT_TEMPLATE_NAME")?.trim() ?? "";
+  const templateLanguage = Deno.env.get("WHATSAPP_TRANSACTION_ALERT_TEMPLATE_LANG")?.trim() || "fr";
+  if (!templateName) {
+    await supabase.from("error_logs").insert({
+      transaction_id: txRow.id,
+      error_type: "WHATSAPP_AUTO_RELAUNCH_SKIPPED",
+      error_message: "Template name is missing; cannot auto-relaunch counterparty notification.",
+      error_details: {
+        failed_whatsapp_message_id: failedWhatsappMessageId,
+        recipient_phone: logRow.recipient_phone,
+      },
+    });
+    return;
+  }
+
+  const templateDispatch = await sendWhatsAppTemplateMessage({
+    recipientPhoneE164: logRow.recipient_phone,
+    templateName,
+    languageCode: templateLanguage,
+    transactionId: txRow.id,
+  });
+
+  await supabase.from("error_logs").insert({
+    transaction_id: txRow.id,
+    error_type: "WHATSAPP_AUTO_RELAUNCH_ATTEMPT",
+    error_message: templateDispatch.sent
+      ? "Auto-relaunch template sent after failed counterparty delivery."
+      : "Auto-relaunch template failed after failed counterparty delivery.",
+    error_details: {
+      failed_whatsapp_message_id: failedWhatsappMessageId,
+      recipient_phone: logRow.recipient_phone,
+      template_name: templateName,
+      template_language: templateLanguage,
+      response_status: templateDispatch.status,
+      response_body: templateDispatch.rawBody,
+    },
+  });
+}
+
 function normalizeForRouting(value: string): string {
   return value
     .trim()
@@ -565,10 +724,25 @@ function shouldResumePendingActionAfterIdentity(intent: RoutedIntent): boolean {
     "CREATE_TRANSACTION",
     "BUTTON_ACCEPT",
     "BUTTON_REJECT",
+    "RELAUNCH_COUNTERPARTY",
     "HUMAN_SUPPORT",
     "RETRY_PAYOUT",
     "SUBMIT_PIN",
   ].includes(intent);
+}
+
+function shouldStorePendingMessageBeforeIdentity(
+  message: ParsedIncomingMessage,
+  intent: RoutedIntent,
+): boolean {
+  if (shouldResumePendingActionAfterIdentity(intent)) {
+    return true;
+  }
+  // Preserve long free-text so AI extraction can run after identity capture.
+  if (message.messageType === "text" && message.textBody.trim().length > 15) {
+    return true;
+  }
+  return false;
 }
 
 async function getLatestActiveTransactionForUser(
@@ -1089,6 +1263,21 @@ function detectIntent(message: ParsedIncomingMessage): {
     };
   }
 
+  const relancerMatch = /^(RELANCER|RENVOYER)(?:\s+([0-9a-fA-F-]{36}|CLT-[A-Z0-9]{6,12}|[A-Z0-9]{6,12}))?$/.exec(
+    normalizedText,
+  );
+  if (relancerMatch) {
+    const candidate = relancerMatch[2] ?? null;
+    const isUuid = candidate !== null && /^[0-9a-fA-F-]{36}$/.test(candidate);
+    return {
+      intent: "RELAUNCH_COUNTERPARTY",
+      normalizedInput,
+      transactionId: isUuid ? candidate : null,
+      action: null,
+      reference: !isUuid ? candidate : null,
+    };
+  }
+
   if (normalizedInput === "MES TRANSACTIONS" || normalizedInput === "HISTORIQUE" ||
     normalizedInput === "EN COURS") {
     return {
@@ -1182,7 +1371,8 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
     }
 
     if (!draft) {
-      const shouldStorePendingAction = shouldResumePendingActionAfterIdentity(
+      const shouldStorePendingAction = shouldStorePendingMessageBeforeIdentity(
+        message,
         pendingIntentCandidate.intent,
       );
       const started = await upsertIdentityDraft({
@@ -1880,6 +2070,18 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
     };
   }
 
+  if (intentResult.intent === "RELAUNCH_COUNTERPARTY") {
+    return {
+      ...base,
+      responseMessage:
+        "🔁 Demande reçue.\n\nNous relançons la notification de votre contrepartie.",
+      allowed: true,
+      rateLimitRemaining: null,
+      transitionApplied: false,
+      transitionDetails: null,
+    };
+  }
+
   if (intentResult.intent === "SUBMIT_PIN") {
     return {
       ...base,
@@ -2086,6 +2288,7 @@ async function applyInteractiveAction(
     message.intent !== "BUTTON_REJECT" &&
     message.intent !== "CANCEL_TRANSACTION" &&
     message.intent !== "RETRY_PAYOUT" &&
+    message.intent !== "RELAUNCH_COUNTERPARTY" &&
     message.intent !== "HUMAN_SUPPORT" &&
     message.intent !== "SUBMIT_PIN"
   ) {
@@ -2153,6 +2356,32 @@ async function applyInteractiveAction(
     }
   }
 
+  if (!resolvedTransactionId && message.intent === "RELAUNCH_COUNTERPARTY") {
+    if (message.transactionReference) {
+      const byReference = await getTransactionByReferenceForUser(
+        message.senderPhoneE164,
+        message.transactionReference,
+      );
+      if (byReference) {
+        resolvedTransactionId = byReference.id;
+      }
+    }
+    if (!resolvedTransactionId) {
+      const supabase = createServiceRoleClient();
+      const { data: activeTransaction } = await supabase
+        .from("transactions")
+        .select("id")
+        .eq("seller_phone", message.senderPhoneE164)
+        .in("status", ["INITIATED", "PENDING_FUNDING"])
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (activeTransaction) {
+        resolvedTransactionId = (activeTransaction as { id: string }).id;
+      }
+    }
+  }
+
   if (!resolvedTransactionId) {
     return {
       ...message,
@@ -2164,6 +2393,8 @@ async function applyInteractiveAction(
           ? "Aucune transaction sécurisée trouvée pour ce code PIN."
           : message.intent === "CANCEL_TRANSACTION"
           ? "Aucune transaction annulable trouvée.\n\nVous ne pouvez annuler qu'avant la confirmation du paiement."
+          : message.intent === "RELAUNCH_COUNTERPARTY"
+          ? "Aucune transaction à relancer n'a été trouvée.\n\nUtilisez RELANCER CLT-XXXXXX ou créez une nouvelle transaction."
           : "Action introuvable.\n\nRelancez depuis le dernier message Clairtus.",
     };
   }
@@ -2171,7 +2402,7 @@ async function applyInteractiveAction(
   const supabase = createServiceRoleClient();
   const { data: transaction, error: readError } = await supabase
     .from("transactions")
-    .select("id, status, seller_phone, buyer_phone, requires_human, base_amount, secret_pin")
+    .select("id, status, seller_phone, buyer_phone, requires_human, base_amount, secret_pin, item_description")
     .eq("id", resolvedTransactionId)
     .maybeSingle();
 
@@ -2191,6 +2422,7 @@ async function applyInteractiveAction(
     requires_human: boolean;
     base_amount: number;
     secret_pin: string | null;
+    item_description: string | null;
   };
 
   if (
@@ -2363,6 +2595,54 @@ async function applyInteractiveAction(
       },
       responseMessage:
         "✅ Relance enregistrée.\n\nNous vous informerons dès qu'il y a une mise à jour.",
+    };
+  }
+
+  if (message.intent === "RELAUNCH_COUNTERPARTY") {
+    if (message.senderPhoneE164 !== transactionRow.seller_phone) {
+      return {
+        ...message,
+        allowed: false,
+        responseMessage:
+          "Seul le vendeur peut relancer la notification de la contrepartie.",
+      };
+    }
+    if (!["INITIATED", "PENDING_FUNDING"].includes(transactionRow.status)) {
+      return {
+        ...message,
+        allowed: false,
+        responseMessage:
+          "Relance impossible pour ce statut.\n\nUtilisez MES TRANSACTIONS pour voir les actions disponibles.",
+      };
+    }
+    const reference = buildTransactionReference(transactionRow.id);
+    const reminderText = [
+      "🔔 Rappel Clairtus",
+      "",
+      `Référence : ${reference}`,
+      `Article : ${transactionRow.item_description ?? "Article"}`,
+      `Montant : ${Number(transactionRow.base_amount).toFixed(2)} USD`,
+      "",
+      `Pour accepter : ACCEPTER ${transactionRow.id}`,
+      `Pour refuser : REFUSER ${transactionRow.id}`,
+      `Pour assistance : AIDE ${transactionRow.id}`,
+    ].join("\n");
+    const dispatch = await sendWhatsAppTextMessage({
+      recipientPhoneE164: transactionRow.buyer_phone,
+      transactionId: transactionRow.id,
+      messageText: reminderText,
+    });
+    return {
+      ...message,
+      transitionApplied: true,
+      transitionDetails: {
+        transaction_id: transactionRow.id,
+        relaunch_dispatch_sent: dispatch.sent,
+        relaunch_dispatch_status: dispatch.status,
+      },
+      responseMessage: dispatch.sent
+        ? "✅ Relance envoyée à votre contrepartie."
+        : "⚠️ Relance tentée, mais l'envoi a échoué.\n\nRéessayez avec RELANCER.",
     };
   }
 
@@ -3176,6 +3456,7 @@ serve(async (request: Request): Promise<Response> => {
       return jsonResponse({ error: "Invalid JSON payload" }, 400);
     }
 
+    const processedStatusesCount = await processIncomingStatuses(webhookPayload);
     const { parsedMessages, rejectedMessages } = parseIncomingMessages(webhookPayload);
     const routedMessages: RoutedMessage[] = [];
     for (const parsedMessage of parsedMessages) {
@@ -3202,6 +3483,7 @@ serve(async (request: Request): Promise<Response> => {
         function: "whatsapp-webhook",
         message: "Webhook signature verified, messages parsed and routed.",
         parsed_messages_count: parsedMessages.length,
+        processed_statuses_count: processedStatusesCount,
         rejected_messages_count: rejectedMessages.length,
         rejected_messages: rejectedMessages,
         phone_format_error_message: PHONE_FORMAT_ERROR_MESSAGE,

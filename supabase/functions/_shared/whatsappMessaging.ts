@@ -1,4 +1,8 @@
 import { createServiceRoleClient } from "./supabaseClient.ts";
+import {
+  extractWhatsAppMessageId,
+  logOutgoingWhatsAppMessage,
+} from "./whatsappDeliveryLog.ts";
 
 function toMetaPhoneRecipient(phoneE164: string): string {
   return phoneE164.replace("+", "");
@@ -58,6 +62,7 @@ export async function sendWhatsAppTextMessage(input: {
   });
 
   const rawBody = await response.text();
+  const whatsappMessageId = extractWhatsAppMessageId(rawBody);
   if (!response.ok) {
     await logWhatsAppError(
       input.transactionId ?? null,
@@ -70,6 +75,14 @@ export async function sendWhatsAppTextMessage(input: {
       },
     );
   }
+  await logOutgoingWhatsAppMessage({
+    transactionId: input.transactionId ?? null,
+    recipientPhoneE164: input.recipientPhoneE164,
+    messageText: input.messageText,
+    sentBy: "WHATSAPP_TEXT",
+    whatsappMessageId,
+    sent: response.ok,
+  });
 
   return {
     sent: response.ok,
@@ -118,6 +131,7 @@ export async function sendWhatsAppTemplateMessage(input: {
   });
 
   const rawBody = await response.text();
+  const whatsappMessageId = extractWhatsAppMessageId(rawBody);
   if (!response.ok) {
     await logWhatsAppError(
       input.transactionId ?? null,
@@ -132,6 +146,14 @@ export async function sendWhatsAppTemplateMessage(input: {
       },
     );
   }
+  await logOutgoingWhatsAppMessage({
+    transactionId: input.transactionId ?? null,
+    recipientPhoneE164: input.recipientPhoneE164,
+    messageText: `[TEMPLATE] ${input.templateName} (${input.languageCode})`,
+    sentBy: "WHATSAPP_TEMPLATE",
+    whatsappMessageId,
+    sent: response.ok,
+  });
 
   return {
     sent: response.ok,

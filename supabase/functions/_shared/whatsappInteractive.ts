@@ -1,3 +1,8 @@
+import {
+  extractWhatsAppMessageId,
+  logOutgoingWhatsAppMessage,
+} from "./whatsappDeliveryLog.ts";
+
 export type TransactionButtonAction = "ACCEPTER" | "REFUSER" | "AIDE" | "ANNULER";
 export type PayoutButtonAction = "RETRY_PAYOUT";
 
@@ -20,6 +25,7 @@ interface SendInteractiveButtonsInput {
   recipientPhoneE164: string;
   bodyText: string;
   buttons: InteractiveButtonDefinition[];
+  transactionId?: string;
 }
 
 function isValidUuid(value: string): boolean {
@@ -222,6 +228,15 @@ export async function sendInteractiveButtonsMessage(
   });
 
   const responseBody = await response.text();
+  const whatsappMessageId = extractWhatsAppMessageId(responseBody);
+  await logOutgoingWhatsAppMessage({
+    transactionId: input.transactionId ?? null,
+    recipientPhoneE164: input.recipientPhoneE164,
+    messageText: input.bodyText,
+    sentBy: "WHATSAPP_INTERACTIVE",
+    whatsappMessageId,
+    sent: response.ok,
+  });
   return {
     sent: response.ok,
     responseStatus: response.status,
