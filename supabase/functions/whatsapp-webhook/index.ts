@@ -394,8 +394,64 @@ function isGuidedRestartRequest(input: string): boolean {
     "COMMENCER",
     "RECOMMENCER",
     "DEMARRER",
-    "START",
   ].includes(normalized);
+}
+
+function isFrenchConversationText(input: string): boolean {
+  const trimmed = input.trim();
+  if (!trimmed) {
+    return false;
+  }
+
+  // Accept expected numeric-only replies during guided capture (amount/phone-like).
+  if (/^\+?[0-9][0-9\s-]{5,}$/.test(trimmed)) {
+    return true;
+  }
+  if (/^[0-9]+(?:[.,][0-9]{1,2})?$/.test(trimmed)) {
+    return true;
+  }
+
+  const normalized = normalizeForRouting(trimmed)
+    .replace(/[^A-Z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!normalized) {
+    return false;
+  }
+
+  const tokens = normalized.split(" ");
+  if (tokens.length === 1 && /^[A-Z]{2,30}$/.test(tokens[0])) {
+    // Allow single-word identity inputs (first/last names).
+    return true;
+  }
+
+  const frenchMarkers = new Set([
+    "BONJOUR",
+    "SALUT",
+    "BONSOIR",
+    "COUCOU",
+    "MERCI",
+    "VENDRE",
+    "ACHETER",
+    "JE",
+    "VEUX",
+    "POUR",
+    "AVEC",
+    "ARTICLE",
+    "PRIX",
+    "MONTANT",
+    "AIDE",
+    "ANNULER",
+    "OUI",
+    "NON",
+    "CONTRAT",
+    "SECURISE",
+    "SECURITE",
+    "PAIEMENT",
+    "TRANSACTION",
+  ]);
+
+  return tokens.some((token) => frenchMarkers.has(token));
 }
 
 function parseAmountFromInput(input: string): number | null {
@@ -1640,6 +1696,25 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
         createTransactionMessageText: syntheticCommand,
       };
     }
+  }
+
+  if (message.messageType === "text" && !isFrenchConversationText(message.textBody)) {
+    return {
+      senderPhoneE164: message.senderPhoneE164,
+      messageType: message.messageType,
+      intent: "UNKNOWN",
+      normalizedInput: normalizedText,
+      transactionId: null,
+      action: null,
+      responseMessage:
+        "🇫🇷 Clairtus fonctionne uniquement en français.\n\nMerci d'envoyer votre message en français.\nExemple : Je veux vendre mon article à 150 USD au +243...",
+      allowed: false,
+      rateLimitRemaining: null,
+      transitionApplied: false,
+      transitionDetails: {
+        french_only_policy_blocked: true,
+      },
+    };
   }
 
   const aiEligibleIdleText = message.messageType === "text" && message.textBody.trim().length > 15;
