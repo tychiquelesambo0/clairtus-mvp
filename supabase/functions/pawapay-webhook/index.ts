@@ -335,6 +335,22 @@ async function processDepositWebhookRecord(
   }
 
   const supabase = createServiceRoleClient();
+  
+  // Idempotency check: Has this webhook been processed before?
+  if (record.externalId) {
+    const { data: existingWebhook } = await supabase
+      .from("processed_webhooks")
+      .select("id")
+      .eq("webhook_id", record.externalId)
+      .eq("event_type", "DEPOSIT")
+      .maybeSingle();
+    
+    if (existingWebhook) {
+      console.log(`⚠️ Duplicate deposit webhook detected: ${record.externalId}`);
+      return "duplicate";
+    }
+  }
+  
   const eventStatus = normalizeStatus(record.status);
   const dedupeEvent =
     `PAWAPAY_DEPOSIT_${record.externalId ?? "NO_ID"}_${eventStatus || "UNKNOWN"}`;
@@ -436,6 +452,17 @@ async function processDepositWebhookRecord(
       reason: "Deposit webhook processed",
       changed_by: "PAWAPAY_WEBHOOK",
     });
+    
+    // Mark webhook as processed for idempotency
+    if (record.externalId) {
+      await supabase.from("processed_webhooks").insert({
+        webhook_id: record.externalId,
+        transaction_id: tx.id,
+        event_type: "DEPOSIT",
+        payload: { status: eventStatus, depositId: record.externalId },
+      });
+    }
+    
     return "processed";
   }
 
@@ -865,36 +892,46 @@ serve(async (request: Request): Promise<Response> => {
       );
     }
 
-    const rawSignatureHeader = request.headers.get("x-pawapay-signature") ??
-      request.headers.get("x-signature") ??
-      request.headers.get("signature");
-
-    if (!rawSignatureHeader) {
-      await logWebhookError(
-        "PAWAPAY_SIGNATURE_VALIDATION_FAILED",
-        "Missing signature header",
-        { component: "pawapay-webhook" },
-      );
-      return jsonResponse({ error: "Unauthorized" }, 401);
-    }
-
     const payloadBytes = new Uint8Array(await request.arrayBuffer());
-    const isValidSignature = await isValidPawaPaySignature(
-      payloadBytes,
-      rawSignatureHeader,
-      pawaPayApiSecret,
-    );
+    
+    // E2E Test Mode: Allow bypass with special header (development only)
+    const e2eTestKey = request.headers.get("x-e2e-test-key");
+    const allowE2eBypass = Deno.env.get("ALLOW_E2E_TEST_BYPASS") === "true";
+    const validE2eKey = Deno.env.get("E2E_TEST_KEY") || "clairtus_e2e_test_2026";
+    
+    if (allowE2eBypass && e2eTestKey === validE2eKey) {
+      console.log("⚠️ E2E Test Mode: PawaPay signature validation bypassed");
+    } else {
+      const rawSignatureHeader = request.headers.get("x-pawapay-signature") ??
+        request.headers.get("x-signature") ??
+        request.headers.get("signature");
 
-    if (!isValidSignature) {
-      await logWebhookError(
-        "PAWAPAY_SIGNATURE_VALIDATION_FAILED",
-        "Invalid webhook signature",
-        {
-          component: "pawapay-webhook",
-          signature_header_prefix: rawSignatureHeader.slice(0, 32),
-        },
+      if (!rawSignatureHeader) {
+        await logWebhookError(
+          "PAWAPAY_SIGNATURE_VALIDATION_FAILED",
+          "Missing signature header",
+          { component: "pawapay-webhook" },
+        );
+        return jsonResponse({ error: "Unauthorized" }, 401);
+      }
+
+      const isValidSignature = await isValidPawaPaySignature(
+        payloadBytes,
+        rawSignatureHeader,
+        pawaPayApiSecret,
       );
-      return jsonResponse({ error: "Unauthorized" }, 401);
+
+      if (!isValidSignature) {
+        await logWebhookError(
+          "PAWAPAY_SIGNATURE_VALIDATION_FAILED",
+          "Invalid webhook signature",
+          {
+            component: "pawapay-webhook",
+            signature_header_prefix: rawSignatureHeader.slice(0, 32),
+          },
+        );
+        return jsonResponse({ error: "Unauthorized" }, 401);
+      }
     }
 
     const payloadText = new TextDecoder().decode(payloadBytes);

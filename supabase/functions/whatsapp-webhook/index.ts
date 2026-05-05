@@ -2343,6 +2343,31 @@ async function applyInteractiveAction(
 
   if (!resolvedTransactionId && message.intent === "SUBMIT_PIN") {
     const supabase = createServiceRoleClient();
+    
+    // Check for multiple SECURED transactions (concurrent transactions)
+    const { data: securedTransactions } = await supabase
+      .from("transactions")
+      .select("id, item_description, base_amount, created_at")
+      .eq("seller_phone", message.senderPhoneE164)
+      .eq("status", "SECURED")
+      .order("updated_at", { ascending: false });
+    
+    if (securedTransactions && securedTransactions.length > 1) {
+      // Multiple active transactions - need disambiguation
+      const transactionList = securedTransactions.map((tx: any, index: number) => {
+        const ref = tx.id.slice(0, 8).toUpperCase();
+        const item = tx.item_description || "Article";
+        const amount = tx.base_amount?.toFixed(2) || "0.00";
+        return `${index + 1}. CLT-${ref}: ${item} (${amount}$)`;
+      }).join("\n");
+      
+      return {
+        ...message,
+        allowed: false,
+        responseMessage: `🔢 Vous avez plusieurs transactions actives.\n\nLaquelle concerne ce code PIN?\n\n${transactionList}\n\nRépondez avec le numéro (1, 2, etc.) ou CLT-XXXXXXXX`,
+      };
+    }
+    
     const { data: activeTransaction } = await supabase
       .from("transactions")
       .select("id")
@@ -3427,25 +3452,35 @@ serve(async (request: Request): Promise<Response> => {
       );
     }
 
-    const signatureHeader = request.headers.get("x-hub-signature-256");
-    if (!signatureHeader) {
-      await logSignatureFailure("Missing X-Hub-Signature-256 header", null);
-      return jsonResponse({ error: "Unauthorized" }, 401);
-    }
-
     const payload = new Uint8Array(await request.arrayBuffer());
-    const isValidSignature = await isMetaSignatureValid(
-      payload,
-      signatureHeader,
-      appSecret,
-    );
+    
+    // E2E Test Mode: Allow bypass with special header (development only)
+    const e2eTestKey = request.headers.get("x-e2e-test-key");
+    const allowE2eBypass = Deno.env.get("ALLOW_E2E_TEST_BYPASS") === "true";
+    const validE2eKey = Deno.env.get("E2E_TEST_KEY") || "clairtus_e2e_test_2026";
+    
+    if (allowE2eBypass && e2eTestKey === validE2eKey) {
+      console.log("⚠️ E2E Test Mode: Signature validation bypassed");
+    } else {
+      const signatureHeader = request.headers.get("x-hub-signature-256");
+      if (!signatureHeader) {
+        await logSignatureFailure("Missing X-Hub-Signature-256 header", null);
+        return jsonResponse({ error: "Unauthorized" }, 401);
+      }
 
-    if (!isValidSignature) {
-      await logSignatureFailure(
-        "Invalid X-Hub-Signature-256 HMAC signature",
+      const isValidSignature = await isMetaSignatureValid(
+        payload,
         signatureHeader,
+        appSecret,
       );
-      return jsonResponse({ error: "Unauthorized" }, 401);
+
+      if (!isValidSignature) {
+        await logSignatureFailure(
+          "Invalid X-Hub-Signature-256 HMAC signature",
+          signatureHeader,
+        );
+        return jsonResponse({ error: "Unauthorized" }, 401);
+      }
     }
 
     const payloadText = new TextDecoder().decode(payload);

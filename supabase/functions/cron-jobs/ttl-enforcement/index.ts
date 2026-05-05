@@ -104,7 +104,7 @@ async function processExpiredSecuredTransaction(
 
   const { data: updated, error: updateError } = await supabase
     .from("transactions")
-    .update({ status: "CANCELLED" })
+    .update({ status: "REFUNDED" })
     .eq("id", transaction.id)
     .eq("status", "SECURED")
     .select("id")
@@ -112,14 +112,14 @@ async function processExpiredSecuredTransaction(
 
   if (updateError || !updated) {
     throw new Error(
-      `Failed to cancel expired SECURED transaction ${transaction.id}: ${updateError?.message ?? "not updated"}`,
+      `Failed to refund expired SECURED transaction ${transaction.id}: ${updateError?.message ?? "not updated"}`,
     );
   }
 
   await supabase.from("transaction_status_log").insert({
     transaction_id: transaction.id,
     old_status: "SECURED",
-    new_status: "CANCELLED",
+    new_status: "REFUNDED",
     event: "TTL_EXPIRED",
     reason: "SECURED timeout expired (72h) with refund initiation",
     changed_by: "CRON_TTL_ENFORCEMENT",
@@ -145,8 +145,8 @@ async function processExpiredSecuredTransaction(
 
   await supabase.from("transaction_status_log").insert({
     transaction_id: transaction.id,
-    old_status: "CANCELLED",
-    new_status: "CANCELLED",
+    old_status: "REFUNDED",
+    new_status: "REFUNDED",
     event: "REFUND_INITIATED_TTL_EXPIRED",
     reason: `Refund initiated from TTL cron: ${JSON.stringify(refundResult)}`,
     changed_by: "CRON_TTL_ENFORCEMENT",

@@ -44,6 +44,7 @@ export enum TransactionStatus {
   SECURED = "SECURED",
   COMPLETED = "COMPLETED",
   CANCELLED = "CANCELLED",
+  REFUNDED = "REFUNDED",
   PIN_FAILED_LOCKED = "PIN_FAILED_LOCKED",
   PAYOUT_FAILED = "PAYOUT_FAILED",
   PAYOUT_DELAYED = "PAYOUT_DELAYED",
@@ -93,13 +94,14 @@ const TRANSITION_MATRIX: TransitionMatrix = {
     [StateEvent.PAYOUT_HARD_FAILED]: TransactionStatus.PAYOUT_FAILED,
   },
   [TransactionStatus.PAYOUT_FAILED]: {
-    [StateEvent.REFUND_COMPLETED]: TransactionStatus.CANCELLED,
+    [StateEvent.REFUND_COMPLETED]: TransactionStatus.REFUNDED,
   },
   [TransactionStatus.PIN_FAILED_LOCKED]: {
-    [StateEvent.REFUND_COMPLETED]: TransactionStatus.CANCELLED,
+    [StateEvent.REFUND_COMPLETED]: TransactionStatus.REFUNDED,
   },
   [TransactionStatus.COMPLETED]: {},
   [TransactionStatus.CANCELLED]: {},
+  [TransactionStatus.REFUNDED]: {},
 };
 
 interface CreateTransactionInput {

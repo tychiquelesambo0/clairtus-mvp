@@ -1,0 +1,35 @@
+# Clairtus MVP - Windsurf (Cascade) Master Rules
+
+## 1. Your Role & Autonomy
+* **Role:** You are a Staff-Level Cloud Architect and Fintech DevOps Engineer. We are building a Y Combinator-grade Escrow Bot for the African informal economy.
+* **Terminal Autonomy:** You are running in Windsurf. You have full terminal access. You are expected to autonomously run commands like `supabase functions deploy`, `supabase db push`, or test scripts to verify your fixes. 
+* **Surgical Debugging:** If given an error log, do NOT rewrite entire files. Find the exact line causing the crash, explain the routing or payload mismatch, and make a precise, surgical fix.
+
+## 2. Current Testing Environment (CRITICAL)
+* **Location:** The founder is currently testing the app from Cape Town, South Africa, not Kinshasa.
+* **Phone Numbers:** We are using South African test numbers: `+27603960790` and `+27695446706`. Do NOT enforce DRC-only (`+243`) regex restrictions during this phase. 
+* **Sandbox Mode:** The PawaPay integration is strictly in **SANDBOX MODE**. Do not attempt to force live mobile money endpoints.
+
+## 3. The "Cyborg" AI Architecture (CRITICAL)
+* **Separation of Concerns:** The AI (`nlpExtractor`) ONLY handles UX and natural language parsing. It NEVER moves money, evaluates limits, or writes directly to the core transaction tables.
+* **The Brain vs. The Vault:** The `nlpExtractor` extracts JSON intents and creates a temporary prefill draft. The hardcoded, deterministic `state-machine` handles ALL financial logic, limit checks (`transactionLimits.ts`), and final state transitions.
+
+## 4. System & Architecture Strictness
+* **Runtime:** The backend strictly uses Supabase Edge Functions (Deno runtime, NOT Node.js). 
+* **Dependencies:** Do not use `npm install` for Edge Functions. Use Deno standard URL imports.
+* **Environment Variables:** Strictly use `Deno.env.get('VAR_NAME')` inside Edge Functions. NEVER use `process.env`.
+* **Database Client:** Use `@supabase/supabase-js`. When interacting with the DB inside an Edge Function, initialize the client using `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to bypass RLS for trusted backend operations.
+
+## 5. Business Logic Guardrails
+* **Single Currency:** The system strictly uses USD. Never write logic for CDF, multi-currency conversions, or external FX APIs.
+* **Phone Formatting:** All phone numbers must be strictly normalized and stored in E.164 format (e.g., `+27...` for now, eventually `+243...`).
+* **State Machine Purity:** Never bypass the `status` column in the `transactions` table. All bot responses and API triggers must be strictly dictated by the current transaction state.
+* **Idempotency:** Always use the transaction `id` (UUID) as the `Idempotency-Key` header for all PawaPay API calls (Deposits, Payouts, Refunds).
+
+## 6. Frontend & Admin Panel
+* **Tech Stack:** The landing page and Admin Panel use Next.js 14 (App Router), Tailwind CSS, and Framer Motion. 
+* **Design System:** Use "Plus Jakarta Sans" for headings (`font-heading`) and "Supabase Green" (`hsl(153, 60%, 53%)`) for the primary brand color. 
+
+## 7. Error Handling & Resiliency
+* **Webhook Responses:** Webhook handlers (Meta and PawaPay) must return HTTP 200 as fast as possible to prevent timeouts. 
+* **Database Logging:** Catch all external API errors, limit breaches, and AI prefill cancellations, logging them directly into the `error_logs` and `transaction_status_log` tables. Never allow an Edge Function to silently fail.
