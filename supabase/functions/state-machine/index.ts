@@ -518,8 +518,18 @@ async function prepareAiTransactionConfirmation(
   });
 
   const itemLabel = normalized.itemDescription || "Article non précisé";
+  
+  // Build role-specific explanation
+  const roleExplanation = normalized.intent === "VENDRE"
+    ? "👤 *Vous êtes le VENDEUR*\nL'acheteur paiera d'abord, puis vous livrerez."
+    : "👤 *Vous êtes l'ACHETEUR*\nVous paierez d'abord, le vendeur livrera ensuite.";
+  
+  const nextSteps = normalized.intent === "VENDRE"
+    ? "1️⃣ L'acheteur paie → 2️⃣ Vous livrez → 3️⃣ Vous recevez le paiement"
+    : "1️⃣ Vous payez → 2️⃣ Le vendeur livre → 3️⃣ Vous donnez le code PIN";
+  
   const bodyText =
-    `✅ J'ai compris. Vous souhaitez **${normalized.intent}** l'article **${itemLabel}** pour **${normalized.amount.toFixed(2)}$** avec le numéro **${normalized.counterpartyPhone}**.\n\nConfirmez-vous la création de ce contrat de sécurité ?\n🔘 Oui, continuer\n🔘 Non, annuler`;
+    `✅ *Transaction comprise*\n\n📦 Article : *${itemLabel}*\n💰 Montant : *${normalized.amount.toFixed(2)} USD*\n\n${roleExplanation}\n\n📞 Contrepartie : ${normalized.counterpartyPhone}\n\n---\n\n🔐 *Contrat de sécurité Clairtus*\n${nextSteps}\n\n� Frais : 2,5% + frais opérateur Mobile Money\n\nConfirmez-vous ?`;
 
   const dispatch = await sendInteractiveButtonsMessage({
     recipientPhoneE164: normalized.initiatorPhone,
