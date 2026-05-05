@@ -1914,7 +1914,9 @@ Votre profil est prêt. Répondez VENDRE ou ACHETER.`,
   const aiEligibleIdleText = message.messageType === "text" && message.textBody.trim().length > 15;
   if (aiEligibleIdleText) {
     const activeTx = await getLatestActiveTransactionForUser(message.senderPhoneE164);
-    if (!activeTx) {
+    // Allow AI extraction even with active transaction if message clearly indicates new transaction intent
+    const looksLikeNewTransaction = /\b(vend|vendre|ach[eè]t|acheter|achat|vente)\b/i.test(message.textBody);
+    if (!activeTx || looksLikeNewTransaction) {
       const extracted = await extractTransactionIntent(message.textBody);
       if (extracted.intent === "UNKNOWN") {
         const fullName = `${identity.firstName ?? ""} ${identity.lastName ?? ""}`.trim();
