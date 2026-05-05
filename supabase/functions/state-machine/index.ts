@@ -241,25 +241,25 @@ async function sendCompletionCelebrationMessages(
     recipientPhoneE164: transaction.seller_phone,
     transactionId: transaction.id,
     messageText:
-      `🎉 Paiement confirmé.\n\nCode PIN validé.\nVos fonds (${payoutAmount} USD) sont en route vers votre compte Mobile Money.`,
+      `🎉 *Paiement confirmé !*\n\nCode PIN validé ✓\n*${payoutAmount} USD* en route vers votre Mobile Money`,
   });
   await sendWhatsAppTextMessage({
     recipientPhoneE164: transaction.seller_phone,
     transactionId: transaction.id,
     messageText:
-      `👏 Félicitations pour la vente de ${itemLabel}.\n\nContinuez à vendre avec Clairtus pour des transactions toujours sécurisées.`,
+      `👏 *Vente réussie !*\n\n${itemLabel} vendu avec succès.\nÀ bientôt sur Clairtus 🇨🇩`,
   });
 
   await sendWhatsAppTextMessage({
     recipientPhoneE164: transaction.buyer_phone,
     transactionId: transaction.id,
-    messageText: "✅ Transaction terminée.\n\nLe vendeur a reçu son paiement.",
+    messageText: "✅ *Transaction terminée*\n\nLe vendeur a été payé.\nMerci d'utiliser Clairtus !",
   });
   await sendWhatsAppTextMessage({
     recipientPhoneE164: transaction.buyer_phone,
     transactionId: transaction.id,
     messageText:
-      `🥳 Félicitations pour votre achat de ${itemLabel}.\n\nContinuez à acheter avec Clairtus en toute confiance.`,
+      `🥳 *Achat réussi !*\n\n${itemLabel} acheté en toute sécurité.\nÀ bientôt sur Clairtus 🇨🇩`,
   });
 }
 

@@ -87,7 +87,7 @@ async function escalateToHumanQueue(transaction: DelayedPayoutRow): Promise<void
     recipientPhoneE164: transaction.seller_phone,
     transactionId: transaction.id,
     messageText:
-      "🆘 Paiement retardé depuis plus de 24h.\n\nUn agent Clairtus prend le relais pour vous assister.",
+      "🆘 *Paiement en cours*\n\nRetard technique détecté.\nNotre équipe intervient maintenant.",
   });
 }
 

@@ -87,7 +87,7 @@ async function processExpiredInitiatedTransaction(
     recipientPhoneE164: transaction.initiator_phone,
     transactionId: transaction.id,
     messageText:
-      "⏰ Délai expiré.\n\nLa transaction est annulée faute d'acceptation à temps.",
+      "⏰ *Délai expiré*\n\nTransaction annulée.\nL'acheteur n'a pas accepté à temps.",
   });
 }
 
@@ -133,14 +133,14 @@ async function processExpiredSecuredTransaction(
     recipientPhoneE164: transaction.buyer_phone,
     transactionId: transaction.id,
     messageText:
-      "⏰ Délai expiré.\n\nLe vendeur n'a pas livré dans les 72 heures.\nVos fonds ont été remboursés (hors frais opérateur).",
+      "⏰ *Délai expiré*\n\nPas de livraison en 72h.\n💰 Remboursement effectué (hors frais opérateur)",
   });
 
   await sendWhatsAppTextMessage({
     recipientPhoneE164: transaction.seller_phone,
     transactionId: transaction.id,
     messageText:
-      "❌ Transaction annulée.\n\nVous n'avez pas livré dans les 72 heures.\nCela impacte votre score de confiance.",
+      "❌ *Transaction annulée*\n\nPas de livraison en 72h.\n⚠️ Impact sur votre score de confiance",
   });
 
   await supabase.from("transaction_status_log").insert({

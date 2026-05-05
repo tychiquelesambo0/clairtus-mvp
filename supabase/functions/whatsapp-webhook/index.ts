@@ -1390,8 +1390,8 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
         transactionId: null,
         action: null,
         responseMessage: started
-          ? "👋 Reprenons ensemble.\n\nQuel est votre prénom ?"
-          : "⚠️ Impossible de lancer l'inscription pour le moment.\n\nMerci de réessayer.",
+          ? "👋 *Bienvenue sur Clairtus*\n\nQuel est votre prénom ?"
+          : "⚠️ *Erreur temporaire*\n\nRéessayez dans 1 minute.",
         allowed: started,
         rateLimitRemaining: null,
         transitionApplied: false,
@@ -1412,7 +1412,7 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
           transactionId: null,
           action: null,
           responseMessage:
-            "Prénom invalide.\n\nEnvoyez uniquement votre prénom.\nExemple : Patrick",
+            "❌ *Prénom invalide*\n\nEnvoyez uniquement votre prénom.\nExemple : Patrick",
           allowed: false,
           rateLimitRemaining: null,
           transitionApplied: false,
@@ -1438,8 +1438,8 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
         transactionId: null,
         action: null,
         responseMessage: saved
-          ? "Merci 🙏\n\nEt votre nom de famille ?"
-          : "⚠️ Impossible d'enregistrer ce prénom pour le moment.\n\nMerci de réessayer.",
+          ? "Merci 🙏\n\nVotre nom de famille ?"
+          : "⚠️ *Erreur temporaire*\n\nRéessayez maintenant.",
         allowed: saved,
         rateLimitRemaining: null,
         transitionApplied: false,
@@ -1460,7 +1460,7 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
         transactionId: null,
         action: null,
         responseMessage:
-          "Nom invalide.\n\nEnvoyez uniquement votre nom de famille.\nExemple : Mbuyi",
+          "❌ *Nom invalide*\n\nEnvoyez uniquement votre nom de famille.\nExemple : Mbuyi",
         allowed: false,
         rateLimitRemaining: null,
         transitionApplied: false,
@@ -1480,7 +1480,7 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
         transactionId: null,
         action: null,
         responseMessage:
-          "⚠️ Impossible d'enregistrer votre identité pour le moment.\n\nMerci de réessayer.",
+          "⚠️ *Erreur temporaire*\n\nRéessayez maintenant.",
         allowed: false,
         rateLimitRemaining: null,
         transitionApplied: false,
@@ -1499,7 +1499,7 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
       await sendWhatsAppTextMessage({
         recipientPhoneE164: message.senderPhoneE164,
         messageText:
-          "✅ Merci, votre profil est enregistré.\n\nNous reprenons exactement là où vous en étiez.",
+          "✅ *Profil enregistré*\n\nOn reprend où vous étiez.",
       });
       const resumedMessage: ParsedIncomingMessage = {
         senderPhoneE164: message.senderPhoneE164,
@@ -1520,8 +1520,12 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
       transactionId: null,
       action: null,
       responseMessage: menuSent
-        ? `Enchanté, ${fullName} ✅\n\nVotre profil est prêt.`
-        : `Enchanté, ${fullName} ✅\n\nVotre profil est prêt. Répondez VENDRE ou ACHETER.`,
+        ? `Enchanté, ${fullName} ✅
+
+Votre profil est prêt.`
+        : `Enchanté, ${fullName} ✅
+
+Votre profil est prêt. Répondez VENDRE ou ACHETER.`,
       allowed: true,
       rateLimitRemaining: null,
       transitionApplied: false,
@@ -1554,8 +1558,8 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
       transactionId: null,
       action: null,
       responseMessage: menuSent
-        ? "⏳ Votre saisie précédente a expiré.\n\nOn repart sur une nouvelle transaction."
-        : "⏳ Votre saisie précédente a expiré.\n\nRépondez VENDRE ou ACHETER pour recommencer.",
+        ? "⏳ *Saisie expirée*\n\nOn repart sur une nouvelle transaction."
+        : "⏳ *Saisie expirée*\n\nRépondez VENDRE ou ACHETER pour recommencer.",
       allowed: true,
       rateLimitRemaining: null,
       transitionApplied: false,
@@ -1578,8 +1582,8 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
       transactionId: null,
       action: null,
       responseMessage: menuSent
-        ? "✅ Parfait.\n\nOn démarre une nouvelle transaction."
-        : "✅ Parfait.\n\nRépondez VENDRE ou ACHETER pour démarrer une nouvelle transaction.",
+        ? "✅ *Parfait*\n\nOn démarre une nouvelle transaction."
+        : "✅ *Parfait*\n\nRépondez VENDRE ou ACHETER pour démarrer une nouvelle transaction.",
       allowed: true,
       rateLimitRemaining: null,
       transitionApplied: false,
@@ -1603,8 +1607,8 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
       transactionId: null,
       action: null,
       responseMessage: menuSent
-        ? "✅ D'accord.\n\nOn repart de zéro."
-        : "✅ D'accord.\n\nOn repart de zéro. Répondez VENDRE ou ACHETER.",
+        ? "✅ *D'accord*\n\nOn repart de zéro."
+        : "✅ *D'accord*\n\nOn repart de zéro. Répondez VENDRE ou ACHETER.",
       allowed: true,
       rateLimitRemaining: null,
       transitionApplied: false,
@@ -1851,7 +1855,7 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
           transactionId: null,
           action: null,
           responseMessage:
-            "⚠️ La saisie guidée a expiré.\n\nDites BONJOUR pour recommencer.",
+            "⏳ *Saisie expirée*\n\nDites BONJOUR pour recommencer.",
           allowed: false,
           rateLimitRemaining: null,
           transitionApplied: false,
@@ -1875,7 +1879,7 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
         transactionId: null,
         action: null,
         responseMessage:
-          "✅ Merci.\n\nNous lançons votre transaction sécurisée.",
+          "✅ *Merci*\n\nNous lançons votre transaction sécurisée.",
         allowed: true,
         rateLimitRemaining: null,
         transitionApplied: false,
@@ -1897,7 +1901,7 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
       transactionId: null,
       action: null,
       responseMessage:
-        "🇫🇷 Clairtus fonctionne uniquement en français.\n\nMerci d'envoyer votre message en français.\nExemple : Je veux vendre mon article à 150 USD au +243...",
+        "🇫🇷 *Français uniquement*\n\nMerci d'envoyer votre message en français.\nExemple : Je veux vendre mon article à 150 USD au +243...",
       allowed: false,
       rateLimitRemaining: null,
       transitionApplied: false,
@@ -1923,8 +1927,8 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
           transactionId: null,
           action: null,
           responseMessage: menuSent
-            ? "Je n'ai pas compris votre demande.\n\nChoisissez VENDRE ou ACHETER pour continuer."
-            : "Je n'ai pas compris votre demande.\n\nRépondez VENDRE ou ACHETER pour continuer.",
+            ? "❓ *Je n'ai pas compris*\n\nChoisissez VENDRE ou ACHETER pour continuer."
+            : "❓ *Je n'ai pas compris*\n\nRépondez VENDRE ou ACHETER pour continuer.",
           allowed: true,
           rateLimitRemaining: null,
           transitionApplied: false,
@@ -1945,7 +1949,7 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
         transactionId: null,
         action: null,
         responseMessage:
-          "✅ Demande analysée.\n\nJe prépare une confirmation de contrat avant création.",
+          "✅ *Demande analysée*\n\nJe prépare une confirmation de contrat avant création.",
         allowed: true,
         rateLimitRemaining: null,
         transitionApplied: false,
