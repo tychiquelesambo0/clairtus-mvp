@@ -2,10 +2,6 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import {
   isUserSuspended,
 } from "../_shared/abusePrevention.ts";
-import {
-  extractTransactionIntent,
-  type ExtractedTransactionIntent,
-} from "../_shared/ai/nlpExtractor.ts";
 import { initiateDepositForTransaction } from "../_shared/depositFlow.ts";
 import { jsonResponse } from "../_shared/http.ts";
 import { normalizeDrPhoneToE164, PHONE_FORMAT_ERROR_MESSAGE } from "../_shared/phone.ts";
@@ -115,8 +111,6 @@ type RoutedIntent =
   | "RELAUNCH_COUNTERPARTY"
   | "HUMAN_SUPPORT"
   | "SUBMIT_PIN"
-  | "AI_CONFIRM_YES"
-  | "AI_CONFIRM_NO"
   | "UNKNOWN";
 
 interface RoutedMessage {
@@ -133,7 +127,6 @@ interface RoutedMessage {
   transitionDetails: Record<string, unknown> | null;
   responseDispatched?: boolean;
   createTransactionMessageText?: string;
-  createTransactionAiPrefill?: ExtractedTransactionIntent;
   transactionReference?: string | null;
 }
 
@@ -1142,26 +1135,7 @@ function detectIntent(message: ParsedIncomingMessage): {
   action: TransactionButtonAction | PayoutButtonAction | null;
   reference: string | null;
 } {
-  const aiConfirmationPayload = message.buttonPayload?.trim() ?? "";
-  if (aiConfirmationPayload === "AI_CONFIRM|YES") {
-    return {
-      intent: "AI_CONFIRM_YES",
-      normalizedInput: aiConfirmationPayload,
-      transactionId: null,
-      action: null,
-      reference: null,
-    };
-  }
-  if (aiConfirmationPayload === "AI_CONFIRM|NO") {
-    return {
-      intent: "AI_CONFIRM_NO",
-      normalizedInput: aiConfirmationPayload,
-      transactionId: null,
-      action: null,
-      reference: null,
-    };
-  }
-
+  const normalizedText = message.textBody.trim().toUpperCase();
   const parsedPayoutPayload = parsePayoutButtonPayload(message.buttonPayload);
   if (parsedPayoutPayload) {
     return {
@@ -1911,61 +1885,6 @@ Votre profil est prêt. Répondez VENDRE ou ACHETER.`,
     };
   }
 
-  const aiEligibleIdleText = message.messageType === "text" && message.textBody.trim().length > 15;
-  if (aiEligibleIdleText) {
-    const activeTx = await getLatestActiveTransactionForUser(message.senderPhoneE164);
-    // Allow AI extraction even with active transaction if message clearly indicates new transaction intent
-    const looksLikeNewTransaction = /\b(vend|vendre|ach[eè]t|acheter|achat|vente)\b/i.test(message.textBody);
-    if (!activeTx || looksLikeNewTransaction) {
-      const extracted = await extractTransactionIntent(message.textBody);
-      if (extracted.intent === "UNKNOWN") {
-        const fullName = `${identity.firstName ?? ""} ${identity.lastName ?? ""}`.trim();
-        const menuSent = await sendGuidedEntryButtons(message.senderPhoneE164, fullName || undefined);
-        return {
-          senderPhoneE164: message.senderPhoneE164,
-          messageType: message.messageType,
-          intent: "GUIDED_START",
-          normalizedInput: normalizedText,
-          transactionId: null,
-          action: null,
-          responseMessage: menuSent
-            ? "❓ *Je n'ai pas compris*\n\nChoisissez VENDRE ou ACHETER pour continuer."
-            : "❓ *Je n'ai pas compris*\n\nRépondez VENDRE ou ACHETER pour continuer.",
-          allowed: true,
-          rateLimitRemaining: null,
-          transitionApplied: false,
-          transitionDetails: {
-            ai_extraction_attempted: true,
-            ai_intent: "UNKNOWN",
-            guided_menu_dispatched: menuSent,
-          },
-          responseDispatched: true,
-        };
-      }
-
-      return {
-        senderPhoneE164: message.senderPhoneE164,
-        messageType: message.messageType,
-        intent: "CREATE_TRANSACTION",
-        normalizedInput: normalizeForRouting(extracted.intent),
-        transactionId: null,
-        action: null,
-        responseMessage:
-          "✅ *Demande analysée*\n\nJe prépare une confirmation de contrat avant création.",
-        allowed: true,
-        rateLimitRemaining: null,
-        transitionApplied: false,
-        transitionDetails: {
-          ai_extraction_attempted: true,
-          ai_prefill_intent: extracted.intent,
-          ai_prefill_amount: extracted.amount,
-          ai_prefill_counterparty_phone: extracted.counterparty_phone,
-        },
-        createTransactionAiPrefill: extracted,
-      };
-    }
-  }
-
   if (isFrenchGreeting(message.textBody)) {
     const fullName = `${identity.firstName ?? ""} ${identity.lastName ?? ""}`.trim();
     const menuSent = await sendGuidedEntryButtons(message.senderPhoneE164, fullName || undefined);
@@ -2092,30 +2011,6 @@ Votre profil est prêt. Répondez VENDRE ou ACHETER.`,
     return {
       ...base,
       responseMessage: "🔐 Code PIN reçu.\n\nVérification en cours.",
-      allowed: true,
-      rateLimitRemaining: null,
-      transitionApplied: false,
-      transitionDetails: null,
-    };
-  }
-
-  if (intentResult.intent === "AI_CONFIRM_YES") {
-    return {
-      ...base,
-      responseMessage:
-        "✅ Confirmation reçue.\n\nCréation du contrat de sécurité en cours.",
-      allowed: true,
-      rateLimitRemaining: null,
-      transitionApplied: false,
-      transitionDetails: null,
-    };
-  }
-
-  if (intentResult.intent === "AI_CONFIRM_NO") {
-    return {
-      ...base,
-      responseMessage:
-        "❎ D'accord, contrat annulé.\n\nChoisissez VENDRE ou ACHETER pour recommencer.",
       allowed: true,
       rateLimitRemaining: null,
       transitionApplied: false,
@@ -3052,13 +2947,7 @@ async function triggerCreateTransaction(
   message: RoutedMessage,
   originalTextBody: string,
 ): Promise<RoutedMessage> {
-  if (
-    (
-      message.intent !== "CREATE_TRANSACTION" &&
-      message.intent !== "AI_CONFIRM_YES" &&
-      message.intent !== "AI_CONFIRM_NO"
-    ) || !message.allowed
-  ) {
+  if (message.intent !== "CREATE_TRANSACTION" || !message.allowed) {
     return message;
   }
 
@@ -3091,28 +2980,11 @@ async function triggerCreateTransaction(
 
   const endpoint = `${supabaseUrl}/functions/v1/state-machine`;
   const messageTextForCreation = message.createTransactionMessageText ?? originalTextBody;
-  const payload: Record<string, unknown> = message.intent === "AI_CONFIRM_YES"
-    ? {
-      action: "confirm_ai_transaction",
-      sender_phone: message.senderPhoneE164,
-    }
-    : message.intent === "AI_CONFIRM_NO"
-    ? {
-      action: "cancel_ai_transaction",
-      sender_phone: message.senderPhoneE164,
-    }
-    : message.createTransactionAiPrefill
-    ? {
-      action: "create_transaction",
-      sender_phone: message.senderPhoneE164,
-      ai_raw_text: originalTextBody,
-      ai_prefill: message.createTransactionAiPrefill,
-    }
-    : {
-      action: "create_transaction",
-      sender_phone: message.senderPhoneE164,
-      message_text: messageTextForCreation,
-    };
+  const payload: Record<string, unknown> = {
+    action: "create_transaction",
+    sender_phone: message.senderPhoneE164,
+    message_text: messageTextForCreation,
+  };
 
   let response: Response;
   try {

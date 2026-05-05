@@ -119,8 +119,6 @@ interface TransitionInput {
 interface RequestBody {
   action:
     | "create_transaction"
-    | "confirm_ai_transaction"
-    | "cancel_ai_transaction"
     | "transition_status"
     | "generate_pin"
     | "validate_pin"
@@ -140,8 +138,6 @@ interface RequestBody {
   target_phone?: string;
   suspended?: boolean;
   requires_human?: boolean;
-  ai_prefill?: AiPrefillPayload;
-  ai_raw_text?: string;
 }
 
 interface TransactionRow {
@@ -162,26 +158,6 @@ interface CreateTransactionResult {
   buyerPhone: string;
   amount: number;
   itemDescription: string;
-}
-
-interface AiPrefillPayload {
-  intent: "VENDRE" | "ACHETER" | "UNKNOWN";
-  amount: number | null;
-  currency: "USD";
-  counterparty_phone: string | null;
-  item_description: string | null;
-}
-
-interface AiTransactionDraftRow {
-  phone_number: string;
-  intent: "VENDRE" | "ACHETER";
-  amount_usd: number;
-  currency: "USD";
-  counterparty_phone: string;
-  item_description: string | null;
-  raw_user_text: string;
-  extracted_payload: AiPrefillPayload;
-  updated_at: string;
 }
 
 interface CompletionNotificationTransactionRow {
@@ -386,227 +362,6 @@ function parseTransactionCreationMessage(
     amount: roundToCents(baseAmount),
     itemDescription,
   };
-}
-
-function validateAndNormalizeAiPrefill(
-  senderPhone: string,
-  aiPrefill: AiPrefillPayload,
-): {
-  initiatorPhone: string;
-  intent: "VENDRE" | "ACHETER";
-  amount: number;
-  counterpartyPhone: string;
-  itemDescription: string | null;
-} {
-  if (
-    (aiPrefill.intent !== "VENDRE" && aiPrefill.intent !== "ACHETER") ||
-    aiPrefill.amount === null ||
-    aiPrefill.counterparty_phone === null
-  ) {
-    throw new Error("Données IA incomplètes pour lancer la confirmation.");
-  }
-
-  if (aiPrefill.currency !== "USD") {
-    throw new Error("Devise invalide.\n\nSeule la devise USD est acceptée.");
-  }
-
-  const depositLimits = getEffectiveDepositLimits();
-  const maxBaseAmount = getMaxBaseAmountWithinDailyCap(
-    depositLimits.mnoFeeRate,
-    depositLimits.effectiveTotalDebitCapUsd,
-  );
-  const amount = roundToCents(aiPrefill.amount);
-  if (
-    !Number.isFinite(amount) ||
-    amount < USD_MIN_BASE_AMOUNT ||
-    amount > maxBaseAmount
-  ) {
-    throw new Error(buildAmountRangeErrorMessage({
-      mnoFeeRate: depositLimits.mnoFeeRate,
-      totalDebitCapUsd: depositLimits.effectiveTotalDebitCapUsd,
-    }));
-  }
-
-  const initiatorPhone = normalizeDrPhoneToE164OrThrow(senderPhone);
-  const counterpartyPhone = normalizeDrPhoneToE164OrThrow(aiPrefill.counterparty_phone);
-  if (initiatorPhone === counterpartyPhone) {
-    throw new Error("Le vendeur et l'acheteur doivent être différents.");
-  }
-
-  return {
-    initiatorPhone,
-    intent: aiPrefill.intent,
-    amount,
-    counterpartyPhone,
-    itemDescription: aiPrefill.item_description?.trim() || null,
-  };
-}
-
-async function upsertAiTransactionDraft(input: {
-  phoneNumber: string;
-  intent: "VENDRE" | "ACHETER";
-  amountUsd: number;
-  counterpartyPhone: string;
-  itemDescription: string | null;
-  rawUserText: string;
-  extractedPayload: AiPrefillPayload;
-}): Promise<void> {
-  const supabase = createServiceRoleClient();
-  const { error } = await supabase.from("ai_transaction_drafts").upsert({
-    phone_number: input.phoneNumber,
-    intent: input.intent,
-    amount_usd: input.amountUsd,
-    currency: "USD",
-    counterparty_phone: input.counterpartyPhone,
-    item_description: input.itemDescription,
-    raw_user_text: input.rawUserText,
-    extracted_payload: input.extractedPayload,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: "phone_number" });
-
-  if (error) {
-    throw new Error(`Impossible de sauvegarder le brouillon IA : ${error.message}`);
-  }
-}
-
-async function getAiTransactionDraft(phoneNumber: string): Promise<AiTransactionDraftRow | null> {
-  const supabase = createServiceRoleClient();
-  const { data, error } = await supabase
-    .from("ai_transaction_drafts")
-    .select(
-      "phone_number, intent, amount_usd, currency, counterparty_phone, item_description, raw_user_text, extracted_payload, updated_at",
-    )
-    .eq("phone_number", phoneNumber)
-    .maybeSingle();
-  if (error || !data) {
-    return null;
-  }
-  return data as AiTransactionDraftRow;
-}
-
-async function deleteAiTransactionDraft(phoneNumber: string): Promise<void> {
-  const supabase = createServiceRoleClient();
-  const { error } = await supabase
-    .from("ai_transaction_drafts")
-    .delete()
-    .eq("phone_number", phoneNumber);
-  if (error) {
-    throw new Error(`Impossible de supprimer le brouillon IA : ${error.message}`);
-  }
-}
-
-function buildCreationCommandFromAiDraft(draft: AiTransactionDraftRow): string {
-  const intentVerb = draft.intent === "VENDRE" ? "Vente" : "Achat";
-  const itemDescription = draft.item_description?.trim() || "Article";
-  return `${intentVerb} ${Number(draft.amount_usd).toFixed(2)} USD ${itemDescription} au ${draft.counterparty_phone}`;
-}
-
-async function prepareAiTransactionConfirmation(
-  senderPhone: string,
-  aiPrefill: AiPrefillPayload,
-  aiRawText: string,
-): Promise<Record<string, unknown>> {
-  const normalized = validateAndNormalizeAiPrefill(senderPhone, aiPrefill);
-  await upsertAiTransactionDraft({
-    phoneNumber: normalized.initiatorPhone,
-    intent: normalized.intent,
-    amountUsd: normalized.amount,
-    counterpartyPhone: normalized.counterpartyPhone,
-    itemDescription: normalized.itemDescription,
-    rawUserText: aiRawText.trim(),
-    extractedPayload: aiPrefill,
-  });
-
-  const itemLabel = normalized.itemDescription || "Article non précisé";
-  
-  // Build role-specific explanation
-  const roleExplanation = normalized.intent === "VENDRE"
-    ? "👤 *Vous êtes le VENDEUR*\nL'acheteur paiera d'abord, puis vous livrerez."
-    : "👤 *Vous êtes l'ACHETEUR*\nVous paierez d'abord, le vendeur livrera ensuite.";
-  
-  const nextSteps = normalized.intent === "VENDRE"
-    ? "1️⃣ L'acheteur paie → 2️⃣ Vous livrez → 3️⃣ Vous recevez le paiement"
-    : "1️⃣ Vous payez → 2️⃣ Le vendeur livre → 3️⃣ Vous donnez le code PIN";
-  
-  const bodyText =
-    `✅ *Transaction comprise*\n\n📦 Article : *${itemLabel}*\n💰 Montant : *${normalized.amount.toFixed(2)} USD*\n\n${roleExplanation}\n\n📞 Contrepartie : ${normalized.counterpartyPhone}\n\n---\n\n🔐 *Contrat de sécurité Clairtus*\n${nextSteps}\n\n� Frais : 2,5% + frais opérateur Mobile Money\n\nConfirmez-vous ?`;
-
-  const dispatch = await sendInteractiveButtonsMessage({
-    recipientPhoneE164: normalized.initiatorPhone,
-    bodyText,
-    buttons: [
-      { id: "AI_CONFIRM|YES", title: "Oui, continuer" },
-      { id: "AI_CONFIRM|NO", title: "Non, annuler" },
-    ],
-  });
-
-  return {
-    confirmation_required: true,
-    draft_saved: true,
-    intent: normalized.intent,
-    amount: normalized.amount,
-    currency: "USD",
-    counterparty_phone: normalized.counterpartyPhone,
-    item_description: normalized.itemDescription,
-    confirmation_dispatch: {
-      sent: dispatch.sent,
-      response_status: dispatch.responseStatus,
-      response_body: dispatch.responseBody,
-    },
-  };
-}
-
-async function logAiPrefillCancellation(input: {
-  senderPhone: string;
-  draft: AiTransactionDraftRow | null;
-}): Promise<void> {
-  const supabase = createServiceRoleClient();
-  await supabase.from("error_logs").insert({
-    error_type: "AI_PREFILL_CANCELLED",
-    error_message: "User cancelled AI-prefilled transaction before creation.",
-    error_details: {
-      component: "state-machine",
-      sender_phone: input.senderPhone,
-      raw_user_text: input.draft?.raw_user_text ?? null,
-      extracted_payload: input.draft?.extracted_payload ?? null,
-      intent: input.draft?.intent ?? null,
-      amount_usd: input.draft?.amount_usd ?? null,
-      counterparty_phone: input.draft?.counterparty_phone ?? null,
-    },
-  });
-}
-
-async function logAiPrefillConfirmation(input: {
-  transactionId: string;
-  transactionStatus: string;
-  senderPhone: string;
-  draft: AiTransactionDraftRow;
-}): Promise<void> {
-  const supabase = createServiceRoleClient();
-  await supabase.from("transaction_status_log").insert({
-    transaction_id: input.transactionId,
-    old_status: input.transactionStatus,
-    new_status: input.transactionStatus,
-    event: "AI_PREFILL_CONFIRMED",
-    reason: `AI draft confirmed by user. Raw text: ${input.draft.raw_user_text}`,
-    changed_by: "STATE_MACHINE",
-  });
-
-  await supabase.from("error_logs").insert({
-    transaction_id: input.transactionId,
-    error_type: "AI_PREFILL_CONFIRMED",
-    error_message: "User confirmed AI-prefilled transaction payload.",
-    error_details: {
-      component: "state-machine",
-      sender_phone: input.senderPhone,
-      raw_user_text: input.draft.raw_user_text,
-      extracted_payload: input.draft.extracted_payload,
-      intent: input.draft.intent,
-      amount_usd: input.draft.amount_usd,
-      counterparty_phone: input.draft.counterparty_phone,
-      item_description: input.draft.item_description,
-    },
-  });
 }
 
 async function ensureUserExists(phoneNumber: string): Promise<void> {
@@ -1121,28 +876,9 @@ serve(async (request: Request): Promise<Response> => {
         );
       }
 
-      if (body.ai_prefill) {
-        if (!body.ai_raw_text?.trim()) {
-          return jsonResponse(
-            { error: "ai_raw_text est requis quand ai_prefill est fourni" },
-            400,
-          );
-        }
-        const confirmation = await prepareAiTransactionConfirmation(
-          body.sender_phone,
-          body.ai_prefill,
-          body.ai_raw_text,
-        );
-        return jsonResponse({
-          ok: true,
-          action: body.action,
-          confirmation,
-        });
-      }
-
       if (!body.message_text) {
         return jsonResponse(
-          { error: "message_text est requis quand ai_prefill n'est pas fourni" },
+          { error: "message_text est requis" },
           400,
         );
       }
@@ -1155,72 +891,6 @@ serve(async (request: Request): Promise<Response> => {
         ok: true,
         action: body.action,
         transaction,
-      });
-    }
-
-    if (body.action === "confirm_ai_transaction") {
-      if (!body.sender_phone) {
-        return jsonResponse(
-          { error: "sender_phone est requis" },
-          400,
-        );
-      }
-      const senderPhone = normalizeDrPhoneToE164OrThrow(body.sender_phone);
-      const draft = await getAiTransactionDraft(senderPhone);
-      if (!draft) {
-        throw new Error("Aucun brouillon IA en attente de confirmation.");
-      }
-
-      const messageText = buildCreationCommandFromAiDraft(draft);
-      const transaction = await createTransactionFromMessage({
-        senderPhone,
-        messageText,
-      });
-      const transactionResult = transaction as {
-        transaction?: {
-          id?: string;
-          status?: string;
-        };
-      };
-      const createdTransactionId = transactionResult.transaction?.id;
-      const createdTransactionStatus = transactionResult.transaction?.status;
-      if (createdTransactionId && createdTransactionStatus) {
-        await logAiPrefillConfirmation({
-          transactionId: createdTransactionId,
-          transactionStatus: createdTransactionStatus,
-          senderPhone,
-          draft,
-        });
-      }
-      await deleteAiTransactionDraft(senderPhone);
-
-      return jsonResponse({
-        ok: true,
-        action: body.action,
-        transaction,
-      });
-    }
-
-    if (body.action === "cancel_ai_transaction") {
-      if (!body.sender_phone) {
-        return jsonResponse(
-          { error: "sender_phone est requis" },
-          400,
-        );
-      }
-      const senderPhone = normalizeDrPhoneToE164OrThrow(body.sender_phone);
-      const draft = await getAiTransactionDraft(senderPhone);
-      await deleteAiTransactionDraft(senderPhone);
-      await logAiPrefillCancellation({
-        senderPhone,
-        draft,
-      });
-      return jsonResponse({
-        ok: true,
-        action: body.action,
-        result: {
-          cancelled: true,
-        },
       });
     }
 
@@ -1394,7 +1064,7 @@ serve(async (request: Request): Promise<Response> => {
     return jsonResponse(
       {
         error:
-          "Action invalide. Utilisez create_transaction, confirm_ai_transaction, cancel_ai_transaction, transition_status, initiate_deposit, initiate_payout, initiate_refund, generate_pin, validate_pin, set_user_suspension ou set_requires_human.",
+          "Action invalide. Utilisez create_transaction, transition_status, initiate_deposit, initiate_payout, initiate_refund, generate_pin, validate_pin, set_user_suspension ou set_requires_human.",
       },
       400,
     );
