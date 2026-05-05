@@ -3074,47 +3074,6 @@ async function triggerCreateTransaction(
     };
   }
 
-  if (message.intent === "AI_CONFIRM_NO") {
-    const fullName = await (async () => {
-      const identity = await getUserIdentity(message.senderPhoneE164);
-      return `${identity.firstName ?? ""} ${identity.lastName ?? ""}`.trim() || undefined;
-    })();
-    const menuSent = await sendGuidedEntryButtons(message.senderPhoneE164, fullName);
-    return {
-      ...message,
-      transitionApplied: true,
-      transitionDetails: {
-        component: "whatsapp-webhook",
-        step: "cancel_ai_transaction",
-        sender_phone: message.senderPhoneE164,
-        guided_menu_dispatched: menuSent,
-      },
-      responseMessage: menuSent
-        ? "❎ Contrat annulé.\n\nVous pouvez lancer une nouvelle transaction."
-        : message.responseMessage,
-      responseDispatched: menuSent,
-    };
-  }
-
-  if (parsedBody.confirmation?.confirmation_required === true) {
-    return {
-      ...message,
-      transitionApplied: true,
-      transitionDetails: {
-        component: "whatsapp-webhook",
-        step: "ai_prefill_confirmation_sent",
-        confirmation_dispatch_sent: parsedBody.confirmation.confirmation_dispatch?.sent ?? null,
-        confirmation_dispatch_status: parsedBody.confirmation.confirmation_dispatch?.response_status ?? null,
-      },
-      responseMessage:
-        parsedBody.confirmation.confirmation_dispatch?.sent === true
-          ? "✅ Détails détectés. Confirmez avec le bouton Oui pour créer le contrat."
-          : "⚠️ Détails détectés, mais l'envoi des boutons de confirmation a échoué. Réessayez.",
-      responseDispatched: parsedBody.confirmation.confirmation_dispatch?.sent === true,
-      allowed: parsedBody.confirmation.confirmation_dispatch?.sent === true,
-    };
-  }
-
   const tx = parsedBody.transaction?.transaction;
   const interactiveDispatch = parsedBody.transaction?.interactive_button_dispatch;
   const templateDispatch = parsedBody.transaction?.template_dispatch;
