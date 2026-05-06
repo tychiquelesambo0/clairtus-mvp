@@ -8,9 +8,9 @@ serve(async (request: Request): Promise<Response> => {
     const testPhone = phone || "+243976492939";
     
     // Detect operator
-    let correspondent = "AIRTEL_OAPI_COD";
+    let correspondent = "AIRTEL_COD";
     if (testPhone.startsWith("+24384") || testPhone.startsWith("+24385") || testPhone.startsWith("+24389")) {
-      correspondent = "ORANGE_OAPI_COD";
+      correspondent = "ORANGE_COD";
     } else if (testPhone.startsWith("+24381") || testPhone.startsWith("+24382") || testPhone.startsWith("+24383")) {
       correspondent = "VODACOM_MPESA_COD";
     }

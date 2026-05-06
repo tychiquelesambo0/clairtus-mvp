@@ -13,11 +13,11 @@ function formatErrorMessage(): string {
 
 export const PHONE_FORMAT_ERROR_MESSAGE = formatErrorMessage();
 
-export type DrcOperator = "AIRTEL_OAPI_COD" | "ORANGE_OAPI_COD" | "VODACOM_MPESA_COD";
+export type DrcOperator = "AIRTEL_COD" | "ORANGE_COD" | "VODACOM_MPESA_COD";
 
 const DRC_OPERATOR_PREFIXES: Record<DrcOperator, string[]> = {
-  "AIRTEL_OAPI_COD": ["24397", "24398", "24399"],
-  "ORANGE_OAPI_COD": ["24384", "24385", "24389"],
+  "AIRTEL_COD": ["24397", "24398", "24399"],
+  "ORANGE_COD": ["24384", "24385", "24389"],
   "VODACOM_MPESA_COD": ["24381", "24382", "24383"],
 };
 
@@ -34,7 +34,7 @@ export function detectDrcOperator(phoneE164: string): DrcOperator | null {
     }
   }
   
-  return "AIRTEL_OAPI_COD";
+  return "AIRTEL_COD";
 }
 
 export function isTestNumber(phoneE164: string): boolean {

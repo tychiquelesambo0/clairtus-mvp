@@ -3,7 +3,7 @@ import { detectDrcOperator } from "./phone.ts";
 export const USD_MIN_BASE_AMOUNT = 1;
 export const USD_DAILY_MOBILE_MONEY_CAP = 2500;
 export const DEFAULT_MNO_FEE_RATE = 0.015;
-const DEFAULT_CORRESPONDENT = "AIRTEL_OAPI_COD";
+const DEFAULT_CORRESPONDENT = "AIRTEL_COD";
 
 interface CorrespondentLimitProfile {
   total_debit_cap_usd?: number;
