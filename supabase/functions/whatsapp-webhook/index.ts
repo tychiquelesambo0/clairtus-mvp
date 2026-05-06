@@ -1695,11 +1695,10 @@ Votre profil est prêt. Répondez VENDRE ou ACHETER.`,
           normalizedInput: normalizedText,
           transactionId: null,
           action: null,
-          responseMessage:
-            `${buildAmountRangeErrorMessage({
-              mnoFeeRate: guidedDepositLimits.mnoFeeRate,
-              totalDebitCapUsd: guidedDepositLimits.effectiveTotalDebitCapUsd,
-            })}\n\n⚠️ Format du prix invalide.\n\nEnvoyez uniquement des chiffres.\nExemple : 150 ou 150.50`,
+          responseMessage: buildAmountRangeErrorMessage({
+            mnoFeeRate: guidedDepositLimits.mnoFeeRate,
+            totalDebitCapUsd: guidedDepositLimits.effectiveTotalDebitCapUsd,
+          }),
           allowed: false,
           rateLimitRemaining: null,
           transitionApplied: false,

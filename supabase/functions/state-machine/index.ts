@@ -564,23 +564,30 @@ async function createTransactionFromMessage(
     };
   }
 
-  const textFallbackMessage = [
-    "🛡️ Clairtus | Nouvelle transaction",
-    `Réf: ${insertedTransaction.id}`,
-    `Article: ${parsed.itemDescription}`,
-    `Montant: ${parsed.amount.toFixed(2)} USD`,
-    "",
-    "Répondez: ACCEPTER, REFUSER, ou AIDE.",
-  ].join("\n");
-  const textSendResult = await sendWhatsAppTextMessage({
-    recipientPhoneE164: counterpartyForPrompt,
-    messageText: textFallbackMessage,
-    transactionId: insertedTransaction.id,
-  });
-  const textDispatch = {
-    sent: textSendResult.sent,
-    response_status: textSendResult.status,
+  let textDispatch = {
+    sent: false,
+    response_status: null as number | null,
   };
+
+  if (!interactiveDispatch.sent) {
+    const textFallbackMessage = [
+      "🛡️ Clairtus | Nouvelle transaction",
+      `Réf: ${insertedTransaction.id}`,
+      `Article: ${parsed.itemDescription}`,
+      `Montant: ${parsed.amount.toFixed(2)} USD`,
+      "",
+      "Répondez: ACCEPTER, REFUSER, ou AIDE.",
+    ].join("\n");
+    const textSendResult = await sendWhatsAppTextMessage({
+      recipientPhoneE164: counterpartyForPrompt,
+      messageText: textFallbackMessage,
+      transactionId: insertedTransaction.id,
+    });
+    textDispatch = {
+      sent: textSendResult.sent,
+      response_status: textSendResult.status,
+    };
+  }
 
   const counterpartyNotified = templateName
     ? templateDispatch.sent
