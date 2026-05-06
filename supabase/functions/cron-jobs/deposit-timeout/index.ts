@@ -62,13 +62,13 @@ async function processTimedOutDeposit(transaction: PendingFundingRow): Promise<v
     recipientPhoneE164: transaction.buyer_phone,
     transactionId: transaction.id,
     messageText:
-      "⏱️ Délai dépassé (30 minutes).\n\nLe paiement n'a pas été confirmé, la transaction est annulée.",
+      "⏱️ Paiement expiré.\n\nVous n'avez pas validé le paiement Mobile Money dans le délai de 30 minutes. La transaction est annulée.",
   });
   await sendWhatsAppTextMessage({
     recipientPhoneE164: transaction.seller_phone,
     transactionId: transaction.id,
     messageText:
-      "⏱️ Délai dépassé (30 minutes).\n\nLe paiement de l'acheteur n'a pas été confirmé à temps.\nLa transaction est annulée.",
+      "⏱️ Paiement acheteur expiré.\n\nL'acheteur n'a pas sécurisé les fonds dans le délai de 30 minutes. Le dossier est annulé. N'expédiez pas l'article.",
   });
 }
 

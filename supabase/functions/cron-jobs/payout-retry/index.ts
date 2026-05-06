@@ -87,7 +87,7 @@ async function escalateToHumanQueue(transaction: DelayedPayoutRow): Promise<void
     recipientPhoneE164: transaction.seller_phone,
     transactionId: transaction.id,
     messageText:
-      "🆘 *Paiement en cours*\n\nRetard technique détecté.\nNotre équipe intervient maintenant.",
+      "⚙️ Intervention technique en cours.\n\nVotre transfert subit une lenteur chez votre opérateur. Notre équipe financière a pris le relais et procède au déblocage manuel. Vos fonds sont garantis.",
   });
 }
 
