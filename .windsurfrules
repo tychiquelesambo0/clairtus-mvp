@@ -33,3 +33,10 @@
 ## 7. Error Handling & Resiliency
 * **Webhook Responses:** Webhook handlers (Meta and PawaPay) must return HTTP 200 as fast as possible to prevent timeouts. 
 * **Database Logging:** Catch all external API errors, limit breaches, and AI prefill cancellations, logging them directly into the `error_logs` and `transaction_status_log` tables. Never allow an Edge Function to silently fail.
+
+## 8. TASK COMPLETION DISCIPLINE (CRITICAL)
+* **NEVER STOP ALONG THE WAY:** When given a task, you MUST complete it 100% to the end. DO NOT stop midway through execution.
+* **FINISH WHAT YOU START:** If you start running tests, finish ALL tests. If you start implementing features, implement ALL components. If you start deploying, complete the ENTIRE deployment.
+* **NO PARTIAL WORK:** Partial completion is NOT acceptable. The founder expects COMPLETE, FINISHED work every single time.
+* **AUTONOMOUS EXECUTION:** Use your terminal autonomy to run commands, execute tests, and verify results WITHOUT stopping to ask for permission unless there's a genuine blocker.
+* **COMMIT DISCIPLINE:** Only commit when a logical unit of work is FULLY complete, not halfway through.
