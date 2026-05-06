@@ -797,11 +797,7 @@ async function listUserTransactions(senderPhoneE164: string): Promise<UserTransa
 
 function buildTransactionsListMessage(senderPhoneE164: string, rows: UserTransactionRow[]): string {
   if (rows.length === 0) {
-    return [
-      "📭 Vous n'avez pas encore de transaction.",
-      "",
-      "Pour démarrer, envoyez : BONJOUR",
-    ].join("\n");
+    return "📭 Votre registre est vide.\n\nVous n'avez aucune transaction active.\nTapez BONJOUR pour commencer.";
   }
 
   const lines = rows.map((row, index) => {
@@ -812,11 +808,11 @@ function buildTransactionsListMessage(senderPhoneE164: string, rows: UserTransac
   });
 
   return [
-    "📚 Vos transactions récentes :",
+    "📋 Vos transactions récentes :",
     "",
     ...lines,
     "",
-    "Pour voir le détail, envoyez simplement : CLT-XXXXXX",
+    "(Tapez la référence CLT-... pour plus de détails)",
   ].join("\n");
 }
 
@@ -878,23 +874,10 @@ function buildRoleAwareFallbackMessage(
 ): string {
   if (!tx) {
     if (latestStatus === "COMPLETED") {
-      return [
-        "✅ Votre dernière transaction est terminée.",
-        "",
-        "Souhaitez-vous démarrer une nouvelle transaction ?",
-        "Si oui, écrivez juste : BONJOUR",
-      ].join("\n");
+      return "✅ Votre dernière transaction a été complétée avec succès.\n\nPour lancer un nouveau contrat de sécurité, tapez exactement : BONJOUR";
     }
 
-    return [
-      "Je n'ai pas compris votre message.",
-      "",
-      "Pour démarrer facilement :",
-      "• écrivez juste : BONJOUR",
-      "• puis choisissez VENDRE ou ACHETER",
-      "",
-      "Pour annuler une transaction en attente : ANNULER",
-    ].join("\n");
+    return "🤖 Commande non reconnue.\n\nClairtus est un terminal automatisé. Veuillez utiliser les commandes exactes :\n👉 Tapez BONJOUR pour ouvrir le menu.\n👉 Tapez MES TRANSACTIONS pour voir votre historique.";
   }
 
   const isSeller = senderPhoneE164 === tx.seller_phone;
@@ -902,33 +885,33 @@ function buildRoleAwareFallbackMessage(
 
   if (tx.status === "INITIATED") {
     return isSeller
-      ? "📨 Transaction en cours.\n\nNous attendons la réponse de l'acheteur (ACCEPTER / REFUSER).\nVous pouvez aussi annuler avec ANNULER."
-      : `📨 Demande reçue pour ${itemLabel}.\n\nUtilisez les boutons ACCEPTER, REFUSER ou AIDE.\nVous pouvez aussi annuler avec ANNULER.`;
+      ? "⏳ Vous avez une transaction en attente.\n\nNous attendons que l'acheteur clique sur ACCEPTER ou REFUSER.\n👉 Tapez ANNULER pour retirer votre offre."
+      : "⏳ Vous avez une transaction en attente de signature.\n\nVeuillez utiliser les boutons du message précédent, ou tapez exactement :\n👉 ACCEPTER {transactionId}\n👉 REFUSER {transactionId}".replace("{transactionId}", tx.id.substring(0, 8).toUpperCase());
   }
   if (tx.status === "PENDING_FUNDING") {
     return isSeller
-      ? "⏳ Transaction en financement.\n\nNous attendons la confirmation du paiement acheteur.\nVous pouvez encore annuler avec ANNULER."
-      : "💳 Paiement en attente.\n\nValidez la demande Mobile Money pour sécuriser la transaction.\nVous pouvez encore annuler avec ANNULER.";
+      ? "⏳ Transaction en attente de financement.\n\nL'acheteur doit valider son paiement par Mobile Money. N'expédiez rien.\n👉 Tapez ANNULER si vous souhaitez abandonner."
+      : "⏳ Facture en attente de paiement.\n\nVeuillez valider le retrait sur votre téléphone pour sécuriser l'argent.\n👉 Tapez ANNULER pour stopper l'achat.";
   }
   if (tx.status === "SECURED") {
     return isSeller
-      ? "Vous avez le code PIN client ? Envoyez simplement les 4 chiffres.\n\nPour voir vos transactions, écrivez : MES TRANSACTIONS\nPour démarrer une nouvelle transaction, écrivez juste : BONJOUR"
-      : "Partagez votre code PIN uniquement au moment de la remise de l'article.\n\nPour voir vos transactions, écrivez : MES TRANSACTIONS\nPour démarrer une nouvelle transaction, écrivez juste : BONJOUR";
+      ? "🔒 Les fonds sont en sécurité. Vous devez livrer l'article.\n\nSi vous avez déjà livré, l'acheteur vous a donné un code PIN secret.\n👉 Tapez uniquement les 4 chiffres du code PIN ici."
+      : "🔒 Votre argent est conservé en toute sécurité.\n\nNe transmettez votre code PIN à 4 chiffres au vendeur que lorsque vous avez l'article en main.\n👉 Tapez AIDE en cas de litige à la livraison.";
   }
   if (tx.status === "PAYOUT_DELAYED") {
     return isSeller
-      ? "⏳ Transfert en retard réseau.\n\nVos fonds restent sécurisés. Utilisez RÉESSAYER ou AIDE si besoin."
-      : "⏳ Transfert vendeur en cours.\n\nLa transaction reste sécurisée pendant le traitement.";
+      ? "⏳ Votre paiement est en attente de traitement par le réseau télécom.\n\nIl sera crédité automatiquement dès le rétablissement du réseau de l'opérateur."
+      : "✅ Le code PIN a bien été validé. La transaction est terminée de votre côté. Le vendeur recevra ses fonds sous peu.";
   }
   if (tx.status === "PAYOUT_FAILED") {
     return isSeller
-      ? "⚠️ Le transfert a échoué.\n\nUtilisez RÉESSAYER pour relancer, ou AIDE pour être assisté."
-      : "⚠️ Le transfert vendeur a rencontré un incident.\n\nNous traitons la reprise en priorité.";
+      ? "⚠️ Votre transfert est en attente (erreur d'opérateur).\n\nVérifiez que votre compte Mobile Money n'est pas plein, puis tapez exactement : RÉESSAYER"
+      : "✅ Le code PIN a bien été validé. La transaction est terminée de votre côté. Le réseau du vendeur rencontre un souci, nous le gérons.";
   }
   if (tx.status === "PIN_FAILED_LOCKED") {
-    return "🆘 Transaction verrouillée pour sécurité.\n\nUtilisez AIDE pour contacter un agent Clairtus.";
+    return "🚫 Dossier verrouillé.\n\nLe code PIN a été saisi de manière erronée 3 fois. Pour des raisons de sécurité anti-fraude, la transaction est protégée.\n👉 Tapez AIDE pour parler à un arbitre.";
   }
-  return "Je n'ai pas compris votre message.\n\nDites BONJOUR pour reprendre étape par étape.";
+  return "🤖 Commande non reconnue.\n\nVeuillez taper exactement : BONJOUR pour ouvrir le menu principal, ou AIDE pour contacter le support.";
 }
 
 function normalizePersonName(input: string): string | null {
@@ -1986,7 +1969,7 @@ Votre profil est prêt. Répondez VENDRE ou ACHETER.`,
   if (intentResult.intent === "SUBMIT_PIN") {
     return {
       ...base,
-      responseMessage: "🔐 Code PIN reçu.\n\nVérification en cours.",
+      responseMessage: "🔐 Analyse du code PIN...\n\nVérification cryptographique en cours, veuillez patienter.",
       allowed: true,
       rateLimitRemaining: null,
       transitionApplied: false,

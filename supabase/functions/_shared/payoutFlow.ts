@@ -185,7 +185,7 @@ export async function initiatePayoutForTransaction(
       const interactiveResult = await sendInteractiveButtonsMessage({
         recipientPhoneE164: tx.seller_phone,
         bodyText:
-          "⚠️ Le transfert n'a pas abouti car le compte Mobile Money semble proche de sa limite.\n\nLibérez le solde ou utilisez un compte adapté, puis appuyez sur « RÉESSAYER ».",
+          "⚠️ Échec du transfert vers votre compte.\n\nVotre opérateur a refusé le dépôt. Votre compte Mobile Money est probablement au-delà de sa limite autorisée.\nVos fonds sont en sécurité chez Clairtus. Videz votre compte Mobile Money, puis cliquez sur RÉESSAYER.",
         buttons: buildPayoutRetryButtons(tx.id),
       });
       retryPromptSent = interactiveResult.sent;
@@ -205,7 +205,7 @@ export async function initiatePayoutForTransaction(
         recipientPhoneE164: tx.seller_phone,
         transactionId: tx.id,
         messageText:
-          "✅ Code valide.\n\nLe réseau Mobile Money est temporairement lent.\nVos fonds restent sécurisés et le transfert reprendra automatiquement.",
+          "⏳ Transfert retardé par votre opérateur.\n\nLe réseau Mobile Money est lent actuellement. Vos fonds sont 100% sécurisés. Notre système retentera le paiement automatiquement.",
       });
       reassuranceSent = reassuranceResult.sent;
     }

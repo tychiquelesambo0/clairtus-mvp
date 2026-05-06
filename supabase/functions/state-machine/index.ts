@@ -780,7 +780,7 @@ async function validateSubmittedPin(
       transaction_id: transaction.id,
       pin_valid: true,
       pin_attempts: 0,
-      message: "✅ Code PIN valide.\n\nNous lançons le transfert vers le vendeur.",
+      message: "✅ CODE PIN VALIDE.\n\nLe contrat est rempli. Décaissement automatique de vos fonds vers votre compte Mobile Money en cours...",
     };
   }
 
@@ -801,7 +801,7 @@ async function validateSubmittedPin(
       pin_valid: false,
       pin_attempts: nextAttempts,
       status: TransactionStatus.SECURED,
-      message: `❌ Code incorrect.\n\nVeuillez réessayer. (${nextAttempts}/3 tentatives)`,
+      message: `⚠️ Code PIN incorrect.\n\nCe n'est pas le bon code. Il vous reste ${3 - nextAttempts} essai(s).\nDemandez à l'acheteur de vérifier le code qu'il a reçu.`,
     };
   }
 
@@ -854,8 +854,8 @@ async function validateSubmittedPin(
     buyer_notification:
       "🔒 Alerte sécurité\n\nLe vendeur a échoué 3 tentatives de code.\nVos fonds restent protégés.\n\nUn agent Clairtus vous contactera.",
     vendor_notification:
-      "🚫 Transaction verrouillée après 3 tentatives.\n\nContactez l'assistance Clairtus.",
-    message: "🚫 Transaction verrouillée après 3 tentatives incorrectes.",
+      "🚫 SÉCURITÉ DÉCLENCHÉE : Transaction verrouillée.\n\n3 échecs consécutifs. Les fonds sont conservés en sécurité pour prévenir toute fraude.\nUn agent Clairtus va analyser cette transaction. Tapez AIDE pour nous contacter.",
+    message: "🚫 SÉCURITÉ DÉCLENCHÉE : Transaction verrouillée.\n\n3 échecs consécutifs. Les fonds sont conservés en sécurité pour prévenir toute fraude.\nUn agent Clairtus va analyser cette transaction. Tapez AIDE pour nous contacter.",
     auto_suspension: autoSuspension,
   };
 }
