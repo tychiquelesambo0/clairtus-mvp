@@ -6,6 +6,7 @@ import {
   sendInteractiveButtonsMessage,
 } from "./whatsappInteractive.ts";
 import { sendWhatsAppTextMessage } from "./whatsappMessaging.ts";
+import { isTestNumber } from "./phone.ts";
 
 interface PayoutApiResponse {
   payoutId?: string;
@@ -129,12 +130,33 @@ export async function initiatePayoutForTransaction(
   if (payoutAmount <= 0) {
     throw new Error("Invalid payout amount after fee deduction.");
   }
-  const correspondent = resolvePayoutCorrespondent();
+  const correspondent = resolvePayoutCorrespondent(tx.seller_phone);
   const payoutCapUsd = getEffectivePayoutCapUsd(correspondent);
   if (payoutAmount > payoutCapUsd) {
     throw new Error(
       `Payout exceeds correspondent cap for ${correspondent}: payout ${payoutAmount.toFixed(2)} USD > ${payoutCapUsd.toFixed(2)} USD.`,
     );
+  }
+
+  const isTest = isTestNumber(tx.seller_phone);
+  
+  if (isTest) {
+    const testPayoutId = `TEST_PAYOUT_${tx.id.slice(0, 8)}`;
+    await supabase
+      .from("transactions")
+      .update({ 
+        pawapay_payout_id: testPayoutId,
+        status: "COMPLETED"
+      })
+      .eq("id", tx.id);
+    
+    return {
+      ok: true,
+      test_mode: true,
+      payout_id: testPayoutId,
+      correspondent,
+      message: "Test mode: Payout auto-completed (sandbox)",
+    };
   }
 
   const requestBody = {

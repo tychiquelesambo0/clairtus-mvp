@@ -7,6 +7,7 @@ import {
   resolveDepositCorrespondent,
 } from "./transactionLimits.ts";
 import { sendWhatsAppTextMessage } from "./whatsappMessaging.ts";
+import { isTestNumber } from "./phone.ts";
 
 interface DepositApiResponse {
   depositId?: string;
@@ -74,13 +75,35 @@ export async function initiateDepositForTransaction(
   }
 
   const depositAmount = computeBuyerDebitAmount(tx.base_amount, tx.mno_fee);
-  const correspondent = resolveDepositCorrespondent();
+  const correspondent = resolveDepositCorrespondent(tx.buyer_phone);
   const depositLimits = getEffectiveDepositLimits(correspondent);
   if (depositAmount > depositLimits.effectiveTotalDebitCapUsd) {
     throw new Error(
       `Deposit exceeds Mobile Money daily cap for ${correspondent}: debit ${depositAmount.toFixed(2)} USD > ${depositLimits.effectiveTotalDebitCapUsd.toFixed(2)} USD.`,
     );
   }
+
+  const isTest = isTestNumber(tx.buyer_phone);
+  
+  if (isTest) {
+    const testDepositId = `TEST_DEPOSIT_${tx.id.slice(0, 8)}`;
+    await supabase
+      .from("transactions")
+      .update({ 
+        pawapay_deposit_id: testDepositId,
+        status: "SECURED"
+      })
+      .eq("id", tx.id);
+    
+    return {
+      ok: true,
+      test_mode: true,
+      deposit_id: testDepositId,
+      correspondent,
+      message: "Test mode: Deposit auto-secured (sandbox)",
+    };
+  }
+
   const requestBody = {
     depositId: tx.id,
     amount: depositAmount.toFixed(2),

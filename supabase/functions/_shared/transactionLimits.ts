@@ -1,7 +1,9 @@
+import { detectDrcOperator } from "./phone.ts";
+
 export const USD_MIN_BASE_AMOUNT = 1;
 export const USD_DAILY_MOBILE_MONEY_CAP = 2500;
 export const DEFAULT_MNO_FEE_RATE = 0.015;
-const DEFAULT_CORRESPONDENT = "MTN_MOMO_COD";
+const DEFAULT_CORRESPONDENT = "AIRTEL_OAPI_COD";
 
 interface CorrespondentLimitProfile {
   total_debit_cap_usd?: number;
@@ -65,7 +67,14 @@ function getCorrespondentProfile(correspondent: string): CorrespondentLimitProfi
   return all[correspondent] ?? null;
 }
 
-function resolveCorrespondentByPurpose(purpose: "deposit" | "payout"): string {
+function resolveCorrespondentByPurpose(purpose: "deposit" | "payout", phoneE164?: string): string {
+  if (phoneE164) {
+    const operator = detectDrcOperator(phoneE164);
+    if (operator) {
+      return operator;
+    }
+  }
+  
   if (purpose === "deposit") {
     return Deno.env.get("PAWAPAY_DEPOSIT_CORRESPONDENT") ??
       Deno.env.get("PAWAPAY_CORRESPONDENT") ??
@@ -76,12 +85,12 @@ function resolveCorrespondentByPurpose(purpose: "deposit" | "payout"): string {
     DEFAULT_CORRESPONDENT;
 }
 
-export function resolveDepositCorrespondent(): string {
-  return resolveCorrespondentByPurpose("deposit");
+export function resolveDepositCorrespondent(phoneE164?: string): string {
+  return resolveCorrespondentByPurpose("deposit", phoneE164);
 }
 
-export function resolvePayoutCorrespondent(): string {
-  return resolveCorrespondentByPurpose("payout");
+export function resolvePayoutCorrespondent(phoneE164?: string): string {
+  return resolveCorrespondentByPurpose("payout", phoneE164);
 }
 
 export function getEffectiveDepositLimits(correspondent: string = resolveDepositCorrespondent()): EffectiveDepositLimits {

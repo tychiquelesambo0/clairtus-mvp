@@ -3,3 +3,8 @@ node_modules/
 .DS_Store
 Assets/
 docs/specs/clairtus-escrow-bot/.env.local
+
+# PawaPay Security Keys (NEVER COMMIT!)
+*.pem
+pawapay_webhook_private.pem
+pawapay_webhook_public.pem
