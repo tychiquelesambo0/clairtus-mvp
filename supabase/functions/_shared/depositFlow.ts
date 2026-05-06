@@ -128,7 +128,7 @@ export async function initiateDepositForTransaction(
     payer: {
       type: "MSISDN",
       address: {
-        value: tx.buyer_phone,
+        value: tx.buyer_phone.replace(/^\+/, ""),
       },
     },
     customerTimestamp: new Date().toISOString(),

@@ -8,9 +8,14 @@ serve(async (_request: Request): Promise<Response> => {
   const pawaPayCorrespondent = Deno.env.get("PAWAPAY_CORRESPONDENT") || "";
   const pawaPayApiSecret = Deno.env.get("PAWAPAY_API_SECRET") || "";
   
+  const keyPreview = pawaPayApiKey 
+    ? `${pawaPayApiKey.substring(0, 10)}...${pawaPayApiKey.substring(pawaPayApiKey.length - 10)}`
+    : "MISSING";
+  
   return jsonResponse({
     PAWAPAY_BASE_URL: pawaPayBaseUrl,
     PAWAPAY_API_KEY_SET: pawaPayApiKey ? `Yes (${pawaPayApiKey.length} chars)` : "NO - MISSING!",
+    PAWAPAY_API_KEY_PREVIEW: keyPreview,
     PAWAPAY_API_TOKEN_SET: pawaPayApiToken ? `Yes (${pawaPayApiToken.length} chars)` : "NO - MISSING!",
     PAWAPAY_CORRESPONDENT: pawaPayCorrespondent || "NO - MISSING!",
     PAWAPAY_API_SECRET_SET: pawaPayApiSecret ? `Yes (${pawaPayApiSecret.length} chars)` : "NO - MISSING!",

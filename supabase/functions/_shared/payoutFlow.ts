@@ -183,7 +183,7 @@ export async function initiatePayoutForTransaction(
     recipient: {
       type: "MSISDN",
       address: {
-        value: tx.seller_phone,
+        value: tx.seller_phone.replace(/^\+/, ""),
       },
     },
     customerTimestamp: new Date().toISOString(),
