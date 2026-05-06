@@ -502,25 +502,10 @@ async function createTransactionFromMessage(
     ? parsed.buyerPhone
     : parsed.sellerPhone;
 
-  const templateName = Deno.env.get("WHATSAPP_TRANSACTION_ALERT_TEMPLATE_NAME")?.trim() ?? "";
-  const templateLanguageCode = Deno.env.get("WHATSAPP_TRANSACTION_ALERT_TEMPLATE_LANG")?.trim() ||
-    "en_US";
   let templateDispatch: { sent: boolean; response_status: number | null } = {
     sent: false,
     response_status: null,
   };
-  if (templateName) {
-    const templateSendResult = await sendWhatsAppTemplateMessage({
-      recipientPhoneE164: counterpartyForPrompt,
-      templateName,
-      languageCode: templateLanguageCode,
-      transactionId: insertedTransaction.id,
-    });
-    templateDispatch = {
-      sent: templateSendResult.sent,
-      response_status: templateSendResult.status,
-    };
-  }
 
   let interactiveDispatch: { sent: boolean; response_status: number | null; error?: string } = {
     sent: false,
@@ -589,9 +574,7 @@ async function createTransactionFromMessage(
     };
   }
 
-  const counterpartyNotified = templateName
-    ? templateDispatch.sent
-    : (interactiveDispatch.sent || textDispatch.sent);
+  const counterpartyNotified = interactiveDispatch.sent || textDispatch.sent;
 
   return {
     transaction: insertedTransaction,

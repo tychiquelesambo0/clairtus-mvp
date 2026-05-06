@@ -2203,30 +2203,6 @@ async function applyInteractiveAction(
   if (!resolvedTransactionId && message.intent === "SUBMIT_PIN") {
     const supabase = createServiceRoleClient();
     
-    // Check for multiple SECURED transactions (concurrent transactions)
-    const { data: securedTransactions } = await supabase
-      .from("transactions")
-      .select("id, item_description, base_amount, created_at")
-      .eq("seller_phone", message.senderPhoneE164)
-      .eq("status", "SECURED")
-      .order("updated_at", { ascending: false });
-    
-    if (securedTransactions && securedTransactions.length > 1) {
-      // Multiple active transactions - need disambiguation
-      const transactionList = securedTransactions.map((tx: any, index: number) => {
-        const ref = tx.id.slice(0, 8).toUpperCase();
-        const item = tx.item_description || "Article";
-        const amount = tx.base_amount?.toFixed(2) || "0.00";
-        return `${index + 1}. CLT-${ref}: ${item} (${amount}$)`;
-      }).join("\n");
-      
-      return {
-        ...message,
-        allowed: false,
-        responseMessage: `🔢 Vous avez plusieurs transactions actives.\n\nLaquelle concerne ce code PIN?\n\n${transactionList}\n\nRépondez avec le numéro (1, 2, etc.) ou CLT-XXXXXXXX`,
-      };
-    }
-    
     const { data: activeTransaction } = await supabase
       .from("transactions")
       .select("id")
