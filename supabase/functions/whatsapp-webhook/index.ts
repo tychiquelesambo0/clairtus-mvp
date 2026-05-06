@@ -1716,7 +1716,7 @@ Votre profil est prêt. Répondez VENDRE ou ACHETER.`,
             `${buildAmountRangeErrorMessage({
               mnoFeeRate: guidedDepositLimits.mnoFeeRate,
               totalDebitCapUsd: guidedDepositLimits.effectiveTotalDebitCapUsd,
-            })}\n\nExemple : 900\n\nSi vous aviez interrompu la saisie, dites MENU pour recommencer.`,
+            })}\n\n⚠️ Format du prix invalide.\n\nEnvoyez uniquement des chiffres.\nExemple : 150 ou 150.50`,
           allowed: false,
           rateLimitRemaining: null,
           transitionApplied: false,

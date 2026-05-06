@@ -138,7 +138,7 @@ export function buildAmountRangeErrorMessage(input?: {
   const totalDebitCapUsd = input?.totalDebitCapUsd ?? getBccTotalDebitCapUsd();
   const mnoFeeRate = input?.mnoFeeRate ?? DEFAULT_MNO_FEE_RATE;
   const maxBaseAmount = getMaxBaseAmountWithinDailyCap(mnoFeeRate, totalDebitCapUsd);
-  return `Montant invalide.\n\nLe montant doit être compris entre ${USD_MIN_BASE_AMOUNT} et ${maxBaseAmount.toFixed(2)} USD pour respecter le plafond Mobile Money de ${totalDebitCapUsd.toFixed(2)} USD (frais opérateur inclus).`;
+  return `⚠️ Montant hors limites.\n\nPour des raisons de sécurité, le montant doit être compris entre ${USD_MIN_BASE_AMOUNT} $ et ${maxBaseAmount.toFixed(2)} $. Veuillez entrer un nouveau montant.`;
 }
 
 export function buildPremiumEducationHint(baseAmount: number): string | null {

@@ -300,13 +300,13 @@ async function sendDepositSecuredNotifications(
     recipientPhoneE164: transaction.buyer_phone,
     transactionId: transaction.id,
     messageText:
-      `🔐 *Paiement sécurisé*\n\nVotre code PIN : *${pin}*\n\n⚠️ Donnez-le UNIQUEMENT à la livraison\nNe le partagez JAMAIS par téléphone`,
+      `� FONDS SÉCURISÉS AVEC SUCCÈS\n\nVotre argent (${amountText} $) est placé en toute sécurité sur le compte de séquestre Clairtus.\n\n🔑 VOTRE CODE PIN SECRET: ${pin}\n\n⚠️ RÈGLE D'OR :\n\nInspectez la marchandise à la livraison.\nSi c'est conforme, donnez ce code au livreur/vendeur.\nNe partagez JAMAIS ce code par message ou par appel avant d'avoir l'article en main.`,
   });
   await sendWhatsAppTextMessage({
     recipientPhoneE164: transaction.seller_phone,
     transactionId: transaction.id,
     messageText:
-      `✅ *Fonds sécurisés* : ${amountText} USD\n\n1️⃣ Livrez l'article\n2️⃣ Demandez le code PIN\n3️⃣ Envoyez-le ici pour recevoir votre paiement`,
+      `🔒 L'ACHETEUR A PAYÉ\n\nLes fonds (${amountText} $) sont fermement sécurisés sur nos serveurs. Vous ne risquez plus rien.\n\n👉 VOS INSTRUCTIONS :\n\nExpédiez la commande immédiatement.\nÀ la livraison, demandez à l'acheteur son code PIN secret à 4 chiffres.\nTapez ce code ici dans cette conversation pour déclencher votre paiement instantané.`,
   });
 }
 
@@ -317,13 +317,13 @@ async function sendDepositFailureNotifications(
     recipientPhoneE164: transaction.buyer_phone,
     transactionId: transaction.id,
     messageText:
-      "❌ *Paiement échoué*\n\nTransaction annulée.\nRéessayez quand vous voulez.",
+      "⚠️ Échec de la provision.\n\nVotre paiement Mobile Money a échoué. Votre compte n'a pas été débité.\nVérifiez votre solde et tapez RÉESSAYER.",
   });
   await sendWhatsAppTextMessage({
     recipientPhoneE164: transaction.seller_phone,
     transactionId: transaction.id,
     messageText:
-      "❌ *Paiement échoué*\n\nTransaction annulée.\nL'acheteur peut réessayer.",
+      "⚠️ Échec côté acheteur.\n\nLe dépôt de l'acheteur n'a pas abouti. La transaction est en pause. L'acheteur a été invité à réessayer. N'expédiez pas encore l'article.",
   });
 }
 
@@ -565,25 +565,25 @@ async function sendPayoutCompletionNotifications(
     recipientPhoneE164: transaction.seller_phone,
     transactionId: transaction.id,
     messageText:
-      `🎉 *Paiement confirmé !*\n\nCode PIN validé ✓\n*${payoutAmount} USD* en route vers votre Mobile Money`,
+      `💰 PAIEMENT REÇU\n\nLe transfert de ${payoutAmount} $ vient d'être effectué vers votre portefeuille Mobile Money.`,
   });
   await sendWhatsAppTextMessage({
     recipientPhoneE164: transaction.seller_phone,
     transactionId: transaction.id,
     messageText:
-      `👏 *Vente réussie !*\n\n${itemLabel} vendu avec succès.\nÀ bientôt sur Clairtus 🇨🇩`,
+      `🎉 Vente sécurisée avec succès !\n\nMerci d'utiliser l'infrastructure de confiance Clairtus pour vendre : ${itemLabel}.\nTapez BONJOUR pour lancer une nouvelle vente.`,
   });
 
   await sendWhatsAppTextMessage({
     recipientPhoneE164: transaction.buyer_phone,
     transactionId: transaction.id,
-    messageText: "✅ *Transaction terminée*\n\nLe vendeur a été payé.\nMerci d'utiliser Clairtus !",
+    messageText: "✅ Transaction clôturée.\n\nLe code PIN a été utilisé avec succès. Le vendeur a reçu son argent.",
   });
   await sendWhatsAppTextMessage({
     recipientPhoneE164: transaction.buyer_phone,
     transactionId: transaction.id,
     messageText:
-      `🥳 *Achat réussi !*\n\n${itemLabel} acheté en toute sécurité.\nÀ bientôt sur Clairtus 🇨🇩`,
+      `🎉 Achat protégé avec succès !\n\nVous avez reçu ${itemLabel} en toute sécurité.\nTapez BONJOUR pour lancer un nouveau contrat.`,
   });
 }
 
@@ -720,13 +720,13 @@ async function sendRefundCompletionNotifications(
     recipientPhoneE164: transaction.buyer_phone,
     transactionId: transaction.id,
     messageText:
-      "💰 *Remboursement effectué*\n\nVos fonds sont remboursés.\n(Hors frais opérateur Mobile Money)",
+      "� Remboursement exécuté.\n\nVos fonds ont été renvoyés vers votre compte Mobile Money (hors frais d'opérateurs). La transaction est définitivement annulée.",
   });
   await sendWhatsAppTextMessage({
     recipientPhoneE164: transaction.seller_phone,
     transactionId: transaction.id,
     messageText:
-      "❌ *Transaction annulée*\n\nL'acheteur a été remboursé.\nCela impacte votre score de confiance.",
+      "🚫 Vente annulée.\n\nL'acheteur a été remboursé. Ceci a été noté dans l'historique de votre profil.",
   });
 }
 

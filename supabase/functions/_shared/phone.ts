@@ -3,10 +3,7 @@ function allowNonDrcTestNumbers(): boolean {
 }
 
 function formatErrorMessage(): string {
-  if (allowNonDrcTestNumbers()) {
-    return "Numéro invalide.\n\nUtilisez l'un des formats suivants :\n• 0XXXXXXXXX\n• 243XXXXXXXXX\n• +243XXXXXXXXX\n• 27XXXXXXXXX\n• +27XXXXXXXXX";
-  }
-  return "Numéro invalide.\n\nUtilisez l'un des formats suivants :\n• 0XXXXXXXXX\n• 243XXXXXXXXX\n• +243XXXXXXXXX";
+  return "⚠️ Numéro invalide.\n\nLe numéro doit inclure l'indicatif du pays sans espaces.\nExemple : +243810000000";
 }
 
 export const PHONE_FORMAT_ERROR_MESSAGE = formatErrorMessage();
