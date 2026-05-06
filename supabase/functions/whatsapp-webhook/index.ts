@@ -943,18 +943,9 @@ function normalizePersonName(input: string): string | null {
 }
 
 function buildGuidedIntroMessage(fullName?: string): string {
-  return [
-    fullName
-      ? `👋 Bonjour ${fullName}, heureux de vous revoir sur Clairtus.`
-      : "👋 Bonjour et bienvenue chez Clairtus.",
-    "",
-    "Clairtus sécurise vos transactions entre acheteur et vendeur :",
-    "• l'acheteur paie en sécurité",
-    "• le vendeur est payé après confirmation",
-    "• tout est tracé pour protéger les deux parties",
-    "",
-    "Que souhaitez-vous faire aujourd'hui ?",
-  ].join("\n");
+  return fullName
+    ? `🔒 Bonjour ${fullName}.\n\nVotre profil est sécurisé. Prêt à faire des affaires sans risque ?\n\nQue souhaitez-vous faire ?`
+    : "🔒 Bienvenue sur Clairtus, le réseau de confiance.\n\nL'argent est mis en sécurité lors de la commande et libéré uniquement à la livraison.\n\nQue souhaitez-vous faire ?";
 }
 
 async function ensureUserRow(phoneNumber: string): Promise<boolean> {
@@ -1364,8 +1355,8 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
         transactionId: null,
         action: null,
         responseMessage: started
-          ? "👋 *Bienvenue sur Clairtus*\n\nQuel est votre prénom ?"
-          : "⚠️ *Erreur temporaire*\n\nRéessayez dans 1 minute.",
+          ? "🔒 Initialisation du protocole de sécurité.\n\nBienvenue sur Clairtus. L'ultime couche de confiance pour vos affaires: zéro fraude, zéro stress.\n\n⚠️ Important : Pour utiliser nos services, votre numéro WhatsApp doit être le même que votre compte Mobile Money, et être enregistré à votre propre nom.\n\nPour commencer, quel est votre prénom ? (Répondez uniquement avec votre prénom)"
+          : "⚠️ Erreur de connexion sécurisée.\n\nNos serveurs sont momentanément occupés. Veuillez réessayer dans un instant en tapant BONJOUR.",
         allowed: started,
         rateLimitRemaining: null,
         transitionApplied: false,
@@ -1386,7 +1377,7 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
           transactionId: null,
           action: null,
           responseMessage:
-            "❌ *Prénom invalide*\n\nEnvoyez uniquement votre prénom.\nExemple : Patrick",
+            "⚠️ Format invalide.\n\nVeuillez envoyer uniquement votre prénom, sans caractères spéciaux.\nExemple : Patrick",
           allowed: false,
           rateLimitRemaining: null,
           transitionApplied: false,
@@ -1412,8 +1403,8 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
         transactionId: null,
         action: null,
         responseMessage: saved
-          ? "Merci 🙏\n\nVotre nom de famille ?"
-          : "⚠️ *Erreur temporaire*\n\nRéessayez maintenant.",
+          ? "✅ Prénom enregistré.\n\nQuel est votre nom de famille ? (Répondez uniquement avec votre nom)"
+          : "⚠️ Erreur de connexion sécurisée.\n\nNos serveurs sont momentanément occupés. Veuillez réessayer dans un instant en tapant BONJOUR.",
         allowed: saved,
         rateLimitRemaining: null,
         transitionApplied: false,
@@ -1434,7 +1425,7 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
         transactionId: null,
         action: null,
         responseMessage:
-          "❌ *Nom invalide*\n\nEnvoyez uniquement votre nom de famille.\nExemple : Mbuyi",
+          "⚠️ Format invalide.\n\nVeuillez envoyer uniquement votre nom de famille.\nExemple : Mbuyi",
         allowed: false,
         rateLimitRemaining: null,
         transitionApplied: false,
@@ -1454,7 +1445,7 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
         transactionId: null,
         action: null,
         responseMessage:
-          "⚠️ *Erreur temporaire*\n\nRéessayez maintenant.",
+          "⚠️ Erreur de connexion sécurisée.\n\nNos serveurs sont momentanément occupés. Veuillez réessayer dans un instant en tapant BONJOUR.",
         allowed: false,
         rateLimitRemaining: null,
         transitionApplied: false,
@@ -1473,7 +1464,7 @@ async function routeMessage(message: ParsedIncomingMessage): Promise<RoutedMessa
       await sendWhatsAppTextMessage({
         recipientPhoneE164: message.senderPhoneE164,
         messageText:
-          "✅ *Profil enregistré*\n\nOn reprend où vous étiez.",
+          "✅ Identité vérifiée et enregistrée.\n\nReprenons la transaction là où nous nous sommes arrêtés.",
       });
       const resumedMessage: ParsedIncomingMessage = {
         senderPhoneE164: message.senderPhoneE164,
@@ -1532,8 +1523,8 @@ Votre profil est prêt. Répondez VENDRE ou ACHETER.`,
       transactionId: null,
       action: null,
       responseMessage: menuSent
-        ? "⏳ *Saisie expirée*\n\nOn repart sur une nouvelle transaction."
-        : "⏳ *Saisie expirée*\n\nRépondez VENDRE ou ACHETER pour recommencer.",
+        ? "⏱️ Session de sécurité expirée.\n\nPour votre protection, les sessions inactives sont fermées.\nTapez BONJOUR pour recommencer."
+        : "⏱️ Session de sécurité expirée.\n\nPour votre protection, les sessions inactives sont fermées.\nTapez BONJOUR pour recommencer.",
       allowed: true,
       rateLimitRemaining: null,
       transitionApplied: false,
@@ -1611,7 +1602,7 @@ Votre profil est prêt. Répondez VENDRE ou ACHETER.`,
         transactionId: null,
         action: null,
         responseMessage:
-          "⚠️ Le parcours guidé est momentanément indisponible.\n\nUtilisez ce format : Vente 900 USD MacBook Air M1 2020 au +243...",
+          "⚠️ Erreur de connexion sécurisée.\n\nNos serveurs sont momentanément occupés. Veuillez réessayer dans un instant en tapant BONJOUR.",
         allowed: false,
         rateLimitRemaining: null,
         transitionApplied: false,
@@ -1620,7 +1611,9 @@ Votre profil est prêt. Répondez VENDRE ou ACHETER.`,
         },
       };
     }
-    const subjectLabel = guidedSelection === "SELL" ? "vous vendez" : "vous achetez";
+    const responseMessage = guidedSelection === "SELL"
+      ? "📦 *Mode VENTE activé*\n\n💡 Astuce Clairtus : Ne déplacez jamais votre marchandise pour rien. L'argent de l'acheteur est sécurisé sur nos serveurs avant même votre expédition.\n\nQue vendez-vous ?\n(Décrivez l'article brièvement, ex: iPhone 13 Pro)"
+      : "🛍️ *Mode ACHAT activé*\n\n💡 Astuce Clairtus : Ne payez plus jamais dans le vide. Le vendeur ne recevra votre argent qu'après votre validation à la livraison.\n\nQu'achetez-vous ?\n(Décrivez l'article brièvement, ex: Écran TV Samsung)";
     return {
       senderPhoneE164: message.senderPhoneE164,
       messageType: message.messageType,
@@ -1628,8 +1621,7 @@ Votre profil est prêt. Répondez VENDRE ou ACHETER.`,
       normalizedInput: guidedSelection,
       transactionId: null,
       action: null,
-      responseMessage:
-        `Parfait ✅\n\nDécrivez brièvement ce que ${subjectLabel}.\nExemple : MacBook Air M1 2020`,
+      responseMessage,
       allowed: true,
       rateLimitRemaining: null,
       transitionApplied: false,
@@ -1652,7 +1644,7 @@ Votre profil est prêt. Répondez VENDRE ou ACHETER.`,
           transactionId: null,
           action: null,
           responseMessage:
-            "La description est trop courte.\n\nExemple : MacBook Air M1 2020",
+            "⚠️ Description trop courte ou invalide.\n\nVeuillez décrire l'article clairement (lettres et chiffres).",
           allowed: false,
           rateLimitRemaining: null,
           transitionApplied: false,
@@ -1688,11 +1680,6 @@ Votre profil est prêt. Répondez VENDRE ou ACHETER.`,
           },
         };
       }
-      const guidedDepositLimits = getEffectiveDepositLimits();
-      const guidedMaxBaseAmount = getMaxBaseAmountWithinDailyCap(
-        guidedDepositLimits.mnoFeeRate,
-        guidedDepositLimits.effectiveTotalDebitCapUsd,
-      );
       return {
         senderPhoneE164: message.senderPhoneE164,
         messageType: message.messageType,
@@ -1702,8 +1689,8 @@ Votre profil est prêt. Répondez VENDRE ou ACHETER.`,
         action: null,
         responseMessage:
           existingDraft.mode === "SELL"
-            ? `Super 👍\n\nQuel est le prix en $ ?\nRépondez uniquement avec un nombre.\nExemple : 900\n\n💡 Montant autorisé : ${USD_MIN_BASE_AMOUNT} à ${guidedMaxBaseAmount.toFixed(2)} USD.\n💡 Clairtus déduit 2,5% du montant total.`
-            : `Super 👍\n\nQuel est le prix en $ ?\nRépondez uniquement avec un nombre.\nExemple : 900\n\n💡 Montant autorisé : ${USD_MIN_BASE_AMOUNT} à ${guidedMaxBaseAmount.toFixed(2)} USD.\n💡 En tant qu'acheteur, vous payez les frais Mobile Money opérateur.`,
+            ? `✅ Article : ${itemDescription}\n\nÀ quel prix vendez-vous cet article ?\n(Envoyez uniquement le montant en $)\n\n💡 Note : Clairtus déduit des frais de service de 2,5% à la fin de la transaction.`
+            : `✅ Article : ${itemDescription}\n\nQuel est le prix convenu avec le vendeur ?\n(Envoyez uniquement le montant en $)`,
         allowed: true,
         rateLimitRemaining: null,
         transitionApplied: false,
@@ -1766,10 +1753,9 @@ Votre profil est prêt. Répondez VENDRE ou ACHETER.`,
         };
       }
 
-      const whoLabel = existingDraft.mode === "SELL"
-        ? "numéro de l'acheteur"
-        : "numéro du vendeur";
-      const amountHint = buildPremiumEducationHint(amount);
+      const responseMessage = existingDraft.mode === "SELL"
+        ? `✅ Prix : ${amount.toFixed(2)} $\n\nQuel est le numéro WhatsApp ou Mobile Money de l'ACHETEUR ?\n(Format international obligatoire, ex: +243810000000)`
+        : `✅ Prix : ${amount.toFixed(2)} $\n\nQuel est le numéro WhatsApp ou Mobile Money du VENDEUR ?\n(Format international obligatoire, ex: +243810000000)`;
       return {
         senderPhoneE164: message.senderPhoneE164,
         messageType: message.messageType,
@@ -1777,17 +1763,7 @@ Votre profil est prêt. Répondez VENDRE ou ACHETER.`,
         normalizedInput: normalizedText,
         transactionId: null,
         action: null,
-        responseMessage:
-          [
-            "Parfait.",
-            "",
-            `Envoyez maintenant le ${whoLabel} en format international.`,
-            "Exemple : +243...",
-            "",
-            amountHint,
-            "Le numéro doit appartenir à la contrepartie et être valide pour Mobile Money.",
-            "Opérateurs supportés : M-Pesa, Orange Money, Airtel Money.",
-          ].filter((line) => Boolean(line)).join("\n"),
+        responseMessage,
         allowed: true,
         rateLimitRemaining: null,
         transitionApplied: false,
@@ -1829,7 +1805,7 @@ Votre profil est prêt. Répondez VENDRE ou ACHETER.`,
           transactionId: null,
           action: null,
           responseMessage:
-            "⏳ *Saisie expirée*\n\nDites BONJOUR pour recommencer.",
+            "⏱️ Brouillon expiré.\n\nVotre transaction en attente a expiré.\nTapez BONJOUR pour en créer une nouvelle.",
           allowed: false,
           rateLimitRemaining: null,
           transitionApplied: false,
