@@ -83,16 +83,20 @@ echo "Deploying pawapay-webhook..."
 supabase functions deploy pawapay-webhook --no-verify-jwt
 
 echo ""
-echo "Deploying cron-jobs/ttl-enforcement..."
-supabase functions deploy ttl-enforcement --no-verify-jwt
+echo "Deploying cron-jobs-ttl-enforcement..."
+supabase functions deploy cron-jobs-ttl-enforcement --no-verify-jwt
 
 echo ""
-echo "Deploying cron-jobs/deposit-timeout..."
-supabase functions deploy deposit-timeout --no-verify-jwt
+echo "Deploying cron-jobs-deposit-timeout..."
+supabase functions deploy cron-jobs-deposit-timeout --no-verify-jwt
 
 echo ""
-echo "Deploying cron-jobs/payout-retry..."
-supabase functions deploy payout-retry --no-verify-jwt
+echo "Deploying cron-jobs-payout-retry..."
+supabase functions deploy cron-jobs-payout-retry --no-verify-jwt
+
+echo ""
+echo "Deploying cron-jobs-float-monitor..."
+supabase functions deploy cron-jobs-float-monitor --no-verify-jwt
 
 echo ""
 echo "✅ All functions deployed"
