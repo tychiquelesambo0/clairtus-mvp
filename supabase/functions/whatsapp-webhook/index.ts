@@ -240,7 +240,7 @@ async function computeHmacSha256Hex(
     false,
     ["sign"],
   );
-  const digestBuffer = await crypto.subtle.sign("HMAC", key, payload);
+  const digestBuffer = await crypto.subtle.sign("HMAC", key, payload as BufferSource);
   return bytesToHex(new Uint8Array(digestBuffer));
 }
 
@@ -1109,7 +1109,7 @@ function detectIntent(message: ParsedIncomingMessage): {
   action: TransactionButtonAction | PayoutButtonAction | null;
   reference: string | null;
 } {
-  const normalizedText = message.textBody.trim().toUpperCase();
+  const normalizedTextUpper = message.textBody.trim().toUpperCase();
   const parsedPayoutPayload = parsePayoutButtonPayload(message.buttonPayload);
   if (parsedPayoutPayload) {
     return {
@@ -1163,7 +1163,7 @@ function detectIntent(message: ParsedIncomingMessage): {
   const normalizedText = normalizeForRouting(message.textBody);
   const normalizedInput = normalizedPayload || normalizedText;
   const textActionMatch = /^(ACCEPTER|REFUSER|AIDE|ANNULER)\s+([0-9a-fA-F-]{36})$/.exec(
-    normalizedText,
+    normalizedTextUpper,
   );
   if (textActionMatch) {
     const action = textActionMatch[1] as TransactionButtonAction;
@@ -1199,7 +1199,7 @@ function detectIntent(message: ParsedIncomingMessage): {
     return { intent: "HUMAN_SUPPORT", normalizedInput, transactionId: null, action: null, reference: null };
   }
 
-  const cancelActionMatch = /^(ANNULER|CANCEL)\s*([0-9a-fA-F-]{36})?$/.exec(normalizedText);
+  const cancelActionMatch = /^(ANNULER|CANCEL)\s*([0-9a-fA-F-]{36})?$/.exec(normalizedTextUpper);
   if (cancelActionMatch) {
     const transactionId = cancelActionMatch[2] ?? null;
     return {
@@ -1212,7 +1212,7 @@ function detectIntent(message: ParsedIncomingMessage): {
   }
 
   const relancerMatch = /^(RELANCER|RENVOYER)(?:\s+([0-9a-fA-F-]{36}|CLT-[A-Z0-9]{6,12}|[A-Z0-9]{6,12}))?$/.exec(
-    normalizedText,
+    normalizedTextUpper,
   );
   if (relancerMatch) {
     const candidate = relancerMatch[2] ?? null;
@@ -1238,7 +1238,7 @@ function detectIntent(message: ParsedIncomingMessage): {
   }
 
   const detailMatch = /^(DETAIL|DETAILS|STATUT|SUIVI)\s+(CLT-[A-Z0-9]{6,12}|[A-Z0-9]{6,12})$/.exec(
-    normalizedText,
+    normalizedTextUpper,
   );
   if (detailMatch) {
     return {
@@ -1250,7 +1250,7 @@ function detectIntent(message: ParsedIncomingMessage): {
     };
   }
 
-  const bareReferenceMatch = /^(CLT[-\s]?[0-9A-F]{6,12}|[0-9A-F]{6,12})$/.exec(normalizedText);
+  const bareReferenceMatch = /^(CLT[-\s]?[0-9A-F]{6,12}|[0-9A-F]{6,12})$/.exec(normalizedTextUpper);
   if (bareReferenceMatch) {
     const candidate = bareReferenceMatch[1].replace(/\s+/g, "").replace(/^CLT(?!-)/, "CLT-");
     return {
@@ -1262,7 +1262,7 @@ function detectIntent(message: ParsedIncomingMessage): {
     };
   }
 
-  const nearReferenceMatch = /^CLT[-\s]?[A-Z0-9]{1,20}$/.exec(normalizedText);
+  const nearReferenceMatch = /^CLT[-\s]?[A-Z0-9]{1,20}$/.exec(normalizedTextUpper);
   if (nearReferenceMatch) {
     return {
       intent: "REFERENCE_HELP",
@@ -1273,7 +1273,7 @@ function detectIntent(message: ParsedIncomingMessage): {
     };
   }
 
-  const isPinInput = /^[0-9]{4}$/.test(normalizedText);
+  const isPinInput = /^[0-9]{4}$/.test(normalizedTextUpper);
   if (isPinInput) {
     return { intent: "SUBMIT_PIN", normalizedInput, transactionId: null, action: null, reference: null };
   }
