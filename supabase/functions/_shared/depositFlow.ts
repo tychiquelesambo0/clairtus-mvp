@@ -85,6 +85,15 @@ export async function initiateDepositForTransaction(
 
   const isTest = isTestNumber(tx.buyer_phone);
   
+  console.log(JSON.stringify({
+    component: "depositFlow",
+    transaction_id: tx.id,
+    buyer_phone: tx.buyer_phone,
+    is_test_number: isTest,
+    correspondent,
+    test_whitelist: Deno.env.get("TEST_NUMBER_WHITELIST"),
+  }));
+  
   if (isTest) {
     const testDepositId = `TEST_DEPOSIT_${tx.id.slice(0, 8)}`;
     await supabase
@@ -94,6 +103,13 @@ export async function initiateDepositForTransaction(
         status: "SECURED"
       })
       .eq("id", tx.id);
+    
+    console.log(JSON.stringify({
+      component: "depositFlow",
+      transaction_id: tx.id,
+      message: "SANDBOX MODE: Deposit auto-secured (no real money)",
+      buyer_phone: tx.buyer_phone,
+    }));
     
     return {
       ok: true,

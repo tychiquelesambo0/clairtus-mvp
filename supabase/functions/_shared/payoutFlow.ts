@@ -140,6 +140,15 @@ export async function initiatePayoutForTransaction(
 
   const isTest = isTestNumber(tx.seller_phone);
   
+  console.log(JSON.stringify({
+    component: "payoutFlow",
+    transaction_id: tx.id,
+    seller_phone: tx.seller_phone,
+    is_test_number: isTest,
+    correspondent,
+    test_whitelist: Deno.env.get("TEST_NUMBER_WHITELIST"),
+  }));
+  
   if (isTest) {
     const testPayoutId = `TEST_PAYOUT_${tx.id.slice(0, 8)}`;
     await supabase
@@ -149,6 +158,13 @@ export async function initiatePayoutForTransaction(
         status: "COMPLETED"
       })
       .eq("id", tx.id);
+    
+    console.log(JSON.stringify({
+      component: "payoutFlow",
+      transaction_id: tx.id,
+      message: "SANDBOX MODE: Payout auto-completed (no real money)",
+      seller_phone: tx.seller_phone,
+    }));
     
     return {
       ok: true,

@@ -507,6 +507,33 @@ async function createTransactionFromMessage(
     response_status: null,
   };
 
+  const templateName = Deno.env.get("WHATSAPP_TRANSACTION_ALERT_TEMPLATE_NAME")?.trim() ?? "";
+  const templateLanguage = Deno.env.get("WHATSAPP_TRANSACTION_ALERT_TEMPLATE_LANG")?.trim() || "fr";
+  
+  if (templateName) {
+    try {
+      const templateResult = await sendWhatsAppTemplateMessage({
+        recipientPhoneE164: counterpartyForPrompt,
+        templateName,
+        languageCode: templateLanguage,
+        transactionId: insertedTransaction.id,
+      });
+      templateDispatch = {
+        sent: templateResult.sent,
+        response_status: templateResult.status,
+      };
+      console.log(JSON.stringify({
+        component: "state-machine",
+        action: "send_template_notification",
+        transaction_id: insertedTransaction.id,
+        template_sent: templateResult.sent,
+        template_status: templateResult.status,
+      }));
+    } catch (error) {
+      console.error("Template send failed:", error);
+    }
+  }
+
   let interactiveDispatch: { sent: boolean; response_status: number | null; error?: string } = {
     sent: false,
     response_status: null,
