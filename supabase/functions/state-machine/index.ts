@@ -729,9 +729,9 @@ async function generatePinForSecuredTransaction(
     generated: true,
     secret_pin: (updated as PinTransactionRow).secret_pin,
     buyer_notification:
-      "🔐 Paiement Bloqué. Voici votre code PIN de livraison: [XXXX]",
+      "🔐 Paiement Sécurisé. Voici votre code PIN de livraison: [XXXX]",
     vendor_notification:
-      "✅ Fonds Sécurisés! Le client a bloqué [Montant] USD. Livrez la commande. Demandez au client son Code PIN à 4 chiffres et envoyez-le ici pour être payé.",
+      "✅ Fonds Sécurisés! Le client a sécurisé [Montant] USD. Livrez la commande. Demandez au client son Code PIN à 4 chiffres et envoyez-le ici pour être payé.",
   };
 }
 

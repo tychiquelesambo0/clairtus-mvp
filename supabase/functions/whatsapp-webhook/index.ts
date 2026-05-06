@@ -855,15 +855,15 @@ function buildTransactionDetailMessage(
   const hint = detailActionHint(senderPhoneE164, row);
 
   return [
-    `📄 Détail ${ref}`,
+    `🔍 Dossier : ${ref}`,
     "",
     `Rôle : ${role}`,
     `Contrepartie : ${counterpartyPhone}`,
     `Article : ${row.item_description}`,
-    `Montant : ${row.base_amount.toFixed(2)} $`,
+    `Montant sécurisé : ${row.base_amount.toFixed(2)} $`,
     `Statut : ${status}`,
     "",
-    hint,
+    `👉 Prochaine action : ${hint}`,
   ].join("\n");
 }
 
@@ -1834,7 +1834,7 @@ Votre profil est prêt. Répondez VENDRE ou ACHETER.`,
       transactionId: null,
       action: null,
       responseMessage:
-        "🇫🇷 *Français uniquement*\n\nMerci d'envoyer votre message en français.\nExemple : Je veux vendre mon article à 150 USD au +243...",
+        "⚠️ Langue non reconnue.\n\nL'interface Clairtus opère uniquement en français pour des raisons légales. Veuillez utiliser les menus fournis ou taper BONJOUR.",
       allowed: false,
       rateLimitRemaining: null,
       transitionApplied: false,
@@ -1887,7 +1887,7 @@ Votre profil est prêt. Répondez VENDRE ou ACHETER.`,
       return {
         ...base,
         responseMessage:
-          "🚫 Votre compte est temporairement suspendu.\n\nContactez l'assistance Clairtus pour continuer.",
+          "🚫 Accès restreint.\n\nVotre compte a été suspendu par notre département de conformité pour activité suspecte. Contactez le support à support@clairtus.com.",
         allowed: false,
         rateLimitRemaining: 0,
         transitionApplied: false,
@@ -1934,7 +1934,7 @@ Votre profil est prêt. Répondez VENDRE ou ACHETER.`,
     return {
       ...base,
       responseMessage:
-        "🆘 Demande d'assistance reçue.\n\nUn agent Clairtus prend le relais.",
+        "🎫 Ticket de support ouvert.\n\nUn arbitre humain Clairtus va examiner votre dossier et vous répondre ici sous peu. Vos fonds restent strictement sécurisés pendant l'investigation.",
       allowed: true,
       rateLimitRemaining: null,
       transitionApplied: false,
@@ -1958,7 +1958,7 @@ Votre profil est prêt. Répondez VENDRE ou ACHETER.`,
     return {
       ...base,
       responseMessage:
-        "🔁 Demande reçue.\n\nNous relançons la notification de votre contrepartie.",
+        "✅ Relance envoyée.\n\nNous venons d'envoyer un rappel officiel à votre contrepartie.",
       allowed: true,
       rateLimitRemaining: null,
       transitionApplied: false,
@@ -2010,7 +2010,7 @@ Votre profil est prêt. Répondez VENDRE ou ACHETER.`,
       return {
         ...base,
         responseMessage:
-          "Transaction introuvable pour cette référence.\n\nEnvoyez MES TRANSACTIONS pour voir la liste.",
+          "⚠️ Référence inconnue.\n\nNous ne trouvons pas cette transaction. Vérifiez le format.\nExemple : CLT-1234ABCD",
         allowed: false,
         rateLimitRemaining: null,
         transitionApplied: false,
@@ -2120,13 +2120,13 @@ async function autoSecureTransactionForTesting(input: {
     recipientPhoneE164: input.buyerPhone,
     transactionId: input.transactionId,
     messageText:
-      `🔐 Paiement confirmé (mode test).\n\nVoici votre code PIN de livraison : ${pin}\n\n⚠️ Ne partagez ce code qu'au moment de la remise de l'article.`,
+      `🧪 MODE SANDBOX ACTIF\n\nPaiement fictif validé.\nVotre PIN de test est : ${pin}`,
   });
   const sellerNotice = await sendWhatsAppTextMessage({
     recipientPhoneE164: input.sellerPhone,
     transactionId: input.transactionId,
     messageText:
-      `✅ Paiement confirmé (mode test).\n\nFonds sécurisés : ${input.baseAmount.toFixed(2)} USD.\n\nDemandez le code PIN client puis envoyez-le ici pour lancer le transfert.`,
+      `🧪 MODE SANDBOX ACTIF\n\nFonds fictifs de ${input.baseAmount.toFixed(2)} $ sécurisés.\nSaisissez le PIN de l'acheteur pour tester le paiement.`,
   });
 
   return {
@@ -2295,7 +2295,7 @@ async function applyInteractiveAction(
     return {
       ...message,
       allowed: false,
-      responseMessage: "Transaction introuvable ou inaccessible.",
+      responseMessage: "⚠️ Référence inconnue.\n\nNous ne trouvons pas cette transaction. Vérifiez le format.\nExemple : CLT-1234ABCD",
     };
   }
 
@@ -2319,7 +2319,7 @@ async function applyInteractiveAction(
       ...message,
       allowed: false,
       responseMessage:
-        "🆘 Assistance activée.\n\nUn agent Clairtus vous contactera sous 2 heures.",
+        "🎫 Ticket de support ouvert.\n\nUn arbitre humain Clairtus va examiner votre dossier et vous répondre ici sous peu. Vos fonds restent strictement sécurisés pendant l'investigation.",
       transitionApplied: false,
       transitionDetails: {
         transaction_id: transactionRow.id,
@@ -2354,7 +2354,7 @@ async function applyInteractiveAction(
     }
 
     const acknowledgement =
-      "🆘 Demande d'assistance enregistrée.\n\nUn agent Clairtus vous contactera sous 2 heures.";
+      "🎫 Ticket de support ouvert.\n\nUn arbitre humain Clairtus va examiner votre dossier et vous répondre ici sous peu. Vos fonds restent strictement sécurisés pendant l'investigation.";
     await sendWhatsAppTextMessage({
       recipientPhoneE164: message.senderPhoneE164,
       transactionId: transactionRow.id,
@@ -2442,7 +2442,7 @@ async function applyInteractiveAction(
       recipientPhoneE164: counterpartyPhone,
       transactionId: transactionRow.id,
       messageText:
-        "ℹ️ La contrepartie a annulé la transaction avant confirmation du paiement.",
+        "🚫 Contrat annulé.\n\nVotre contrepartie a annulé la transaction avant le paiement. Le dossier est clos.",
     });
 
     return {
@@ -2456,7 +2456,7 @@ async function applyInteractiveAction(
         cancelled_by: message.senderPhoneE164,
       },
       responseMessage:
-        "✅ Transaction annulée.\n\nVotre contrepartie a été notifiée immédiatement.",
+        "✅ Demande d'annulation reçue. Vérification des conditions d'annulation en cours...",
     };
   }
 
@@ -2502,15 +2502,12 @@ async function applyInteractiveAction(
     }
     const reference = buildTransactionReference(transactionRow.id);
     const reminderText = [
-      "🔔 Rappel Clairtus",
+      "🔔 Rappel de Sécurité Clairtus",
       "",
-      `Référence : ${reference}`,
-      `Article : ${transactionRow.item_description ?? "Article"}`,
-      `Montant : ${Number(transactionRow.base_amount).toFixed(2)} USD`,
+      "Une transaction est toujours en attente de votre validation.",
+      `Article : ${transactionRow.item_description ?? "Article"} | Montant : ${Number(transactionRow.base_amount).toFixed(2)} $`,
       "",
-      `Pour accepter : ACCEPTER ${transactionRow.id}`,
-      `Pour refuser : REFUSER ${transactionRow.id}`,
-      `Pour assistance : AIDE ${transactionRow.id}`,
+      `Veuillez taper ACCEPTER ${transactionRow.id} ou REFUSER ${transactionRow.id}.`,
     ].join("\n");
     const dispatch = await sendWhatsAppTextMessage({
       recipientPhoneE164: transactionRow.buyer_phone,
@@ -2526,7 +2523,7 @@ async function applyInteractiveAction(
         relaunch_dispatch_status: dispatch.status,
       },
       responseMessage: dispatch.sent
-        ? "✅ Relance envoyée à votre contrepartie."
+        ? "✅ Relance envoyée.\n\nNous venons d'envoyer un rappel officiel à votre contrepartie."
         : "⚠️ Relance tentée, mais l'envoi a échoué.\n\nRéessayez avec RELANCER.",
     };
   }
