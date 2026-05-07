@@ -31,13 +31,13 @@ export async function sendWhatsAppTextMessage(input: {
   messageText: string;
   transactionId?: string;
 }): Promise<{ sent: boolean; status: number; rawBody: string }> {
-  const accessToken = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
-  const phoneNumberId = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
+  const accessToken = Deno.env.get("META_ACCESS_TOKEN") || Deno.env.get("WHATSAPP_ACCESS_TOKEN");
+  const phoneNumberId = Deno.env.get("META_PHONE_NUMBER_ID") || Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
   const apiVersion = Deno.env.get("WHATSAPP_API_VERSION") ?? "v18.0";
 
   if (!accessToken || !phoneNumberId) {
     throw new Error(
-      "Missing WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID for text send.",
+      "Missing META_ACCESS_TOKEN/WHATSAPP_ACCESS_TOKEN or META_PHONE_NUMBER_ID/WHATSAPP_PHONE_NUMBER_ID for text send.",
     );
   }
 
@@ -97,13 +97,13 @@ export async function sendWhatsAppTemplateMessage(input: {
   languageCode: string;
   transactionId?: string;
 }): Promise<{ sent: boolean; status: number; rawBody: string }> {
-  const accessToken = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
-  const phoneNumberId = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
+  const accessToken = Deno.env.get("META_ACCESS_TOKEN") || Deno.env.get("WHATSAPP_ACCESS_TOKEN");
+  const phoneNumberId = Deno.env.get("META_PHONE_NUMBER_ID") || Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
   const apiVersion = Deno.env.get("WHATSAPP_API_VERSION") ?? "v18.0";
 
   if (!accessToken || !phoneNumberId) {
     throw new Error(
-      "Missing WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID for template send.",
+      "Missing META_ACCESS_TOKEN/WHATSAPP_ACCESS_TOKEN or META_PHONE_NUMBER_ID/WHATSAPP_PHONE_NUMBER_ID for template send.",
     );
   }
 
