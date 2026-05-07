@@ -162,9 +162,11 @@ export async function initiateDepositForTransaction(
   }
 
   let buyerMessageSent = false;
+  const premiumHint = buildPremiumEducationHint(tx.base_amount);
+  
+  let message: string;
   if (checkoutUrl) {
-    const premiumHint = buildPremiumEducationHint(tx.base_amount);
-    const message = [
+    message = [
       "💳 Paiement requis",
       "",
       "Pour sécuriser vos fonds, ouvrez ce lien :",
@@ -175,13 +177,27 @@ export async function initiateDepositForTransaction(
       "",
       "🔒 Clairtus protège votre paiement jusqu'à la confirmation de livraison.",
     ].filter((line) => Boolean(line)).join("\n");
-    const sendResult = await sendWhatsAppTextMessage({
-      recipientPhoneE164: tx.buyer_phone,
-      messageText: message,
-      transactionId: tx.id,
-    });
-    buyerMessageSent = sendResult.sent;
+  } else {
+    message = [
+      "💳 Paiement requis",
+      "",
+      `📱 Vous allez recevoir une notification Mobile Money sur votre téléphone ${tx.buyer_phone}.`,
+      "",
+      "✅ Confirmez le paiement pour sécuriser vos fonds.",
+      "",
+      `💡 Montant total : ${depositAmount.toFixed(2)} USD (montant + frais opérateur).`,
+      premiumHint,
+      "",
+      "🔒 Clairtus protège votre paiement jusqu'à la confirmation de livraison.",
+    ].filter((line) => Boolean(line)).join("\n");
   }
+  
+  const sendResult = await sendWhatsAppTextMessage({
+    recipientPhoneE164: tx.buyer_phone,
+    messageText: message,
+    transactionId: tx.id,
+  });
+  buyerMessageSent = sendResult.sent;
 
   return {
     transaction_id: tx.id,
